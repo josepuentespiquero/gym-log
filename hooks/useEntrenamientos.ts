@@ -39,20 +39,22 @@ export function useEntrenamientos() {
   }, [fetchAll])
 
   const guardarSeries = useCallback(async (series: NuevaSerie[]) => {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('entrenamientos')
       .insert(series)
-      .select()
 
     if (error) return { error: error.message }
 
-    if (data) {
-      setEntrenamientos(prev =>
-        [...data, ...prev].sort((a, b) =>
-          b.fecha.localeCompare(a.fecha) || a.created_at.localeCompare(b.created_at)
-        )
-      )
-    }
+    // Re-fetch para sincronizar el estado local con la BD
+    // (el insert+select puede devolver vacío con RLS activo)
+    const { data: fresh, error: fetchError } = await supabase
+      .from('entrenamientos')
+      .select('*')
+      .order('fecha', { ascending: false })
+      .order('created_at', { ascending: true })
+
+    if (!fetchError && fresh) setEntrenamientos(fresh)
+
     return { error: null }
   }, [])
 
