@@ -1,0 +1,461 @@
+[
+  {
+    "fecha": "5/2/26",
+    "ejercicio": "Cuádriceps",
+    "peso": 10,
+    "serie": 1,
+    "repeticiones": 12,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "5/2/26",
+    "ejercicio": "Cuádriceps",
+    "peso": 10,
+    "serie": 2,
+    "repeticiones": 11,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "5/2/26",
+    "ejercicio": "Cuádriceps",
+    "peso": 10,
+    "serie": 3,
+    "repeticiones": 16,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "5/2/26",
+    "ejercicio": "Flexiones",
+    "peso": null,
+    "serie": 1,
+    "repeticiones": 30,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "11/2/26",
+    "ejercicio": "Dominadas",
+    "peso": 3,
+    "serie": 1,
+    "repeticiones": 9,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "11/2/26",
+    "ejercicio": "Espalda",
+    "peso": 29,
+    "serie": 1,
+    "repeticiones": 11,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "11/2/26",
+    "ejercicio": "Espalda",
+    "peso": 29,
+    "serie": 2,
+    "repeticiones": 13,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "11/2/26",
+    "ejercicio": "Espalda",
+    "peso": 29,
+    "serie": 3,
+    "repeticiones": 10,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "20/2/26",
+    "ejercicio": "Fly",
+    "peso": 10,
+    "serie": 1,
+    "repeticiones": 10,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "20/2/26",
+    "ejercicio": "Fly",
+    "peso": 10,
+    "serie": 2,
+    "repeticiones": 13,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "20/2/26",
+    "ejercicio": "Fly",
+    "peso": 10,
+    "serie": 3,
+    "repeticiones": 13,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "20/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 1,
+    "repeticiones": 12,
+    "fallo": "N",
+    "reserva": 1
+  },
+  {
+    "fecha": "20/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 2,
+    "repeticiones": 10,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "20/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 3,
+    "repeticiones": 8,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "20/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 4,
+    "repeticiones": 10,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Biceps",
+    "peso": 9,
+    "serie": 1,
+    "repeticiones": 11,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Biceps",
+    "peso": 9,
+    "serie": 2,
+    "repeticiones": 10,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Biceps",
+    "peso": 9,
+    "serie": 3,
+    "repeticiones": 11,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Biceps",
+    "peso": 9,
+    "serie": 4,
+    "repeticiones": 8,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Fondos",
+    "peso": null,
+    "serie": 1,
+    "repeticiones": 12,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Fondos",
+    "peso": null,
+    "serie": 2,
+    "repeticiones": 13,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Fondos",
+    "peso": null,
+    "serie": 3,
+    "repeticiones": 10,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Fondos",
+    "peso": null,
+    "serie": 4,
+    "repeticiones": 7,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 1,
+    "repeticiones": 12,
+    "fallo": "N",
+    "reserva": 1
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Plancha Glúteos",
+    "peso": 12,
+    "serie": 1,
+    "repeticiones": 15,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Plancha Glúteos",
+    "peso": 12,
+    "serie": 2,
+    "repeticiones": 15,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "21/2/26",
+    "ejercicio": "Plancha Glúteos",
+    "peso": 12,
+    "serie": 3,
+    "repeticiones": 13,
+    "fallo": "N",
+    "reserva": 1
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Fly",
+    "peso": 10,
+    "serie": 1,
+    "repeticiones": 11,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Fly",
+    "peso": 10,
+    "serie": 2,
+    "repeticiones": 12,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Fly",
+    "peso": 10,
+    "serie": 3,
+    "repeticiones": 11,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Fondos",
+    "peso": null,
+    "serie": 1,
+    "repeticiones": 11,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Fondos",
+    "peso": null,
+    "serie": 2,
+    "repeticiones": 10,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Fondos",
+    "peso": null,
+    "serie": 3,
+    "repeticiones": 8,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 1,
+    "repeticiones": 15,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 2,
+    "repeticiones": 15,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 3,
+    "repeticiones": 12,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "25/2/26",
+    "ejercicio": "Pecho",
+    "peso": 12,
+    "serie": 4,
+    "repeticiones": 8,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Biceps",
+    "peso": 9,
+    "serie": 1,
+    "repeticiones": 12,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Biceps",
+    "peso": 9,
+    "serie": 2,
+    "repeticiones": 11,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Biceps",
+    "peso": 9,
+    "serie": 3,
+    "repeticiones": 6,
+    "fallo": "S",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Espalda",
+    "peso": 29,
+    "serie": 1,
+    "repeticiones": 21,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Espalda",
+    "peso": 30,
+    "serie": 2,
+    "repeticiones": 17,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Espalda",
+    "peso": 30,
+    "serie": 3,
+    "repeticiones": 15,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Espalda",
+    "peso": 30,
+    "serie": 4,
+    "repeticiones": 16,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Hombro",
+    "peso": 8,
+    "serie": 1,
+    "repeticiones": 17,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Hombro",
+    "peso": 8,
+    "serie": 2,
+    "repeticiones": 13,
+    "fallo": "N",
+    "reserva": 1
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Hombro",
+    "peso": 8,
+    "serie": 3,
+    "repeticiones": 13,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Hombro",
+    "peso": 8,
+    "serie": 4,
+    "repeticiones": 11,
+    "fallo": "N",
+    "reserva": 0
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Plancha Glúteos",
+    "peso": 13,
+    "serie": 1,
+    "repeticiones": 16,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Plancha Glúteos",
+    "peso": 13,
+    "serie": 2,
+    "repeticiones": 16,
+    "fallo": "N",
+    "reserva": 2
+  },
+  {
+    "fecha": "27/2/26",
+    "ejercicio": "Plancha Glúteos",
+    "peso": 13,
+    "serie": 3,
+    "repeticiones": 15,
+    "fallo": "S",
+    "reserva": 0
+  }
+]
