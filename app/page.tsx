@@ -7,9 +7,9 @@ import { useRouter } from 'next/navigation'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const EJERCICIOS = [
-  'Biceps', 'Cuádriceps', 'Dominadas', 'Espalda', 'Flexiones',
-  'Fly', 'Fondos', 'Hombro', 'Pecho', 'Plancha Glúteos', 'Triceps',
+const EJERCICIOS_ESTANDAR = [
+  'Abdomen', 'Biceps', 'Core', 'Cuádriceps', 'Espalda',
+  'Gemelos', 'Hombro', 'Isquiosurales', 'Pecho', 'Triceps',
 ]
 
 const BB: React.CSSProperties = { fontFamily: 'var(--font-bebas)' }
@@ -206,8 +206,23 @@ export default function Home() {
   // Form state — empty string on server to avoid timezone-based hydration mismatch
   const [fecha, setFecha] = useState('')
   useEffect(() => { setFecha(fechaHoy()) }, [])
-  const [ejercicioSelect, setEjercicioSelect] = useState(EJERCICIOS[0])
+  const [ejercicioSelect, setEjercicioSelect] = useState('')
   const [esCustom, setEsCustom] = useState(false)
+  const [mostrarEstandares, setMostrarEstandares] = useState(false)
+
+  const ejerciciosDisponibles = useMemo(() => {
+    const propios = [...new Set(entrenamientos.map(e => e.ejercicio))].sort((a, b) => a.localeCompare(b, 'es'))
+    if (!mostrarEstandares) return propios
+    return [...new Set([...propios, ...EJERCICIOS_ESTANDAR])].sort((a, b) => a.localeCompare(b, 'es'))
+  }, [entrenamientos, mostrarEstandares])
+
+  // Sync selected exercise when list changes
+  useEffect(() => {
+    if (ejerciciosDisponibles.length > 0 && !esCustom && !ejerciciosDisponibles.includes(ejercicioSelect)) {
+      setEjercicioSelect(ejerciciosDisponibles[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ejerciciosDisponibles])
   const [ejercicioCustom, setEjercicioCustom] = useState('')
   const [peso, setPeso] = useState('')
   const [repeticiones, setRepeticiones] = useState('')
@@ -362,7 +377,19 @@ export default function Home() {
         </Field>
 
         {/* EJERCICIO */}
-        <Field label="Ejercicio">
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: '0.95rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666' }}>Ejercicio</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={mostrarEstandares}
+                onChange={e => setMostrarEstandares(e.target.checked)}
+                style={{ width: 13, height: 13, accentColor: '#c8f135', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.75rem', letterSpacing: '1px', color: mostrarEstandares ? '#c8f135' : '#555', transition: 'color 0.15s' }}>Mostrar estándares</span>
+            </label>
+          </div>
           <div style={{ position: 'relative' }}>
             <select
               value={esCustom ? '__otro__' : ejercicioSelect}
@@ -371,7 +398,10 @@ export default function Home() {
               onFocus={focusAccent}
               onBlur={blurAccent}
             >
-              {EJERCICIOS.map(ej => <option key={ej} value={ej}>{ej}</option>)}
+              {ejerciciosDisponibles.length === 0
+                ? <option value="" disabled>Sin ejercicios — activa &quot;Mostrar estándares&quot;</option>
+                : ejerciciosDisponibles.map(ej => <option key={ej} value={ej}>{ej}</option>)
+              }
               <option value="__otro__">+ Nuevo ejercicio...</option>
             </select>
             <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#c8f135', pointerEvents: 'none', fontSize: '1.1rem' }}>▾</span>
@@ -388,7 +418,7 @@ export default function Home() {
               onBlur={blurAccent}
             />
           )}
-        </Field>
+        </div>
 
         {/* ÚLTIMA VEZ */}
         {serie1 && (
