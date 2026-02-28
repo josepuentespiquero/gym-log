@@ -193,7 +193,11 @@ export default function LoginPage() {
               style={{ marginTop: 2, width: 16, height: 16, accentColor: '#c8f135', flexShrink: 0, cursor: 'pointer' }}
             />
             <span style={{ color: '#999', fontSize: '0.8rem', lineHeight: 1.6 }}>
-              He leído y acepto la Política de Privacidad y los Términos de Uso de Gym Log.
+              He leído y acepto la{' '}
+              <a href="/legal" target="_blank" rel="noopener noreferrer" style={{ color: '#c8f135', textDecoration: 'underline' }}>
+                Política de Privacidad y los Términos de Uso
+              </a>
+              {' '}de Gym Log.
             </span>
           </label>
         )}
