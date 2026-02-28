@@ -15,22 +15,30 @@ export interface NuevaSerie {
 
 export function useEntrenamientos() {
   const [entrenamientos, setEntrenamientos] = useState<Entrenamiento[]>([])
+  const [ejerciciosEstandar, setEjerciciosEstandar] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('entrenamientos')
-      .select('*')
-      .order('fecha', { ascending: false })
-      .order('created_at', { ascending: true })
+    const [{ data, error }, { data: estandar }] = await Promise.all([
+      supabase
+        .from('entrenamientos')
+        .select('*')
+        .order('fecha', { ascending: false })
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('ejercicios_estandar')
+        .select('nombre')
+        .order('nombre', { ascending: true }),
+    ])
 
     if (error) {
       setError(error.message)
     } else {
       setEntrenamientos(data ?? [])
     }
+    setEjerciciosEstandar((estandar ?? []).map(e => e.nombre))
     setLoading(false)
   }, [])
 
@@ -101,6 +109,7 @@ export function useEntrenamientos() {
 
   return {
     entrenamientos,
+    ejerciciosEstandar,
     loading,
     error,
     guardarSeries,

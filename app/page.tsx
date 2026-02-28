@@ -7,10 +7,6 @@ import { useRouter } from 'next/navigation'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const EJERCICIOS_ESTANDAR = [
-  'Abdomen', 'Biceps', 'Core', 'Cuádriceps', 'Espalda',
-  'Gemelos', 'Hombro', 'Isquiosurales', 'Pecho', 'Triceps',
-]
 
 const BB: React.CSSProperties = { fontFamily: 'var(--font-bebas)' }
 
@@ -188,7 +184,7 @@ function SerieItem({ s, numSerie, onDelete }: { s: SeriePendiente; numSerie: num
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { entrenamientos, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes } = useEntrenamientos()
+  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes } = useEntrenamientos()
   const router = useRouter()
 
   // Auth
@@ -213,8 +209,8 @@ export default function Home() {
   const ejerciciosDisponibles = useMemo(() => {
     const propios = [...new Set(entrenamientos.map(e => e.ejercicio))].sort((a, b) => a.localeCompare(b, 'es'))
     if (!mostrarEstandares) return propios
-    return [...new Set([...propios, ...EJERCICIOS_ESTANDAR])].sort((a, b) => a.localeCompare(b, 'es'))
-  }, [entrenamientos, mostrarEstandares])
+    return [...new Set([...propios, ...ejerciciosEstandar])].sort((a, b) => a.localeCompare(b, 'es'))
+  }, [entrenamientos, ejerciciosEstandar, mostrarEstandares])
 
   // Sync selected exercise when list changes
   useEffect(() => {
