@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useEntrenamientos } from '@/hooks/useEntrenamientos'
-import { Entrenamiento } from '@/lib/supabase'
+import { supabase, Entrenamiento } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -188,6 +189,19 @@ function SerieItem({ s, numSerie, onDelete }: { s: SeriePendiente; numSerie: num
 
 export default function Home() {
   const { entrenamientos, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes } = useEntrenamientos()
+  const router = useRouter()
+
+  // Auth
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUserEmail(user?.email ?? null))
+  }, [])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   // Form state — empty string on server to avoid timezone-based hydration mismatch
   const [fecha, setFecha] = useState('')
@@ -316,6 +330,28 @@ export default function Home() {
 
   return (
     <div style={{ background: '#0e0e0e', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 16px', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}>
+
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <div style={{ width: '100%', maxWidth: 440, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <div style={{ ...BB, fontSize: '3.5rem', color: '#c8f135', letterSpacing: 4, lineHeight: 1 }}>GYM LOG</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+            {userEmail && (
+              <span style={{ color: '#666', fontSize: '0.75rem', letterSpacing: 1, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userEmail}
+              </span>
+            )}
+            <button
+              onClick={handleLogout}
+              style={{ background: 'none', border: '1px solid #2e2e2e', borderRadius: 6, color: '#666', fontSize: '0.7rem', letterSpacing: '1.5px', textTransform: 'uppercase', padding: '4px 10px', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#ff5555'; e.currentTarget.style.borderColor = '#ff5555' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2e2e2e' }}
+            >
+              Salir
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* ── Card ──────────────────────────────────────────────────── */}
       <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 32, width: '100%', maxWidth: 440 }}>

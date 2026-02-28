@@ -39,14 +39,19 @@ export function useEntrenamientos() {
   }, [fetchAll])
 
   const guardarSeries = useCallback(async (series: NuevaSerie[]) => {
+    // Obtener el email del usuario autenticado
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) return { error: 'No autenticado' }
+
+    const seriesConUsuario = series.map(s => ({ ...s, usuario: user.email! }))
+
     const { error } = await supabase
       .from('entrenamientos')
-      .insert(series)
+      .insert(seriesConUsuario)
 
     if (error) return { error: error.message }
 
-    // Re-fetch para sincronizar el estado local con la BD
-    // (el insert+select puede devolver vacío con RLS activo)
+    // Re-fetch para sincronizar (RLS filtra automáticamente por usuario)
     const { data: fresh, error: fetchError } = await supabase
       .from('entrenamientos')
       .select('*')
