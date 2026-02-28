@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -31,6 +31,16 @@ function blurAccent(e: React.FocusEvent<HTMLInputElement>) {
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
+function SearchParamsReader({ onError }: { onError: (msg: string) => void }) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('error') === 'confirmation_failed') {
+      onError('El enlace de confirmación no es válido o ha expirado.')
+    }
+  }, [searchParams, onError])
+  return null
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
@@ -40,13 +50,6 @@ export default function LoginPage() {
   const [registered, setRegistered] = useState(false)
 
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    if (searchParams.get('error') === 'confirmation_failed') {
-      setError('El enlace de confirmación no es válido o ha expirado.')
-    }
-  }, [searchParams])
 
   function translateError(msg: string): string {
     if (msg.includes('Invalid login credentials')) return 'Email o contraseña incorrectos.'
@@ -126,6 +129,9 @@ export default function LoginPage() {
   // ── Formulario principal ────────────────────────────────────────────────────
   return (
     <div style={{ background: '#0e0e0e', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 16px', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}>
+      <Suspense fallback={null}>
+        <SearchParamsReader onError={msg => setError(msg)} />
+      </Suspense>
       <Header />
 
       {/* Card */}
