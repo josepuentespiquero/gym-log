@@ -48,6 +48,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
+  const [consentido, setConsentido] = useState(false)
 
   const router = useRouter()
 
@@ -139,8 +140,8 @@ export default function LoginPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
-          <TabBtn active={mode === 'login'} onClick={() => { setMode('login'); setError(null) }}>Entrar</TabBtn>
-          <TabBtn active={mode === 'register'} onClick={() => { setMode('register'); setError(null) }}>Crear cuenta</TabBtn>
+          <TabBtn active={mode === 'login'} onClick={() => { setMode('login'); setError(null); setConsentido(false) }}>Entrar</TabBtn>
+          <TabBtn active={mode === 'register'} onClick={() => { setMode('register'); setError(null); setConsentido(false) }}>Crear cuenta</TabBtn>
         </div>
 
         {/* Email */}
@@ -177,9 +178,24 @@ export default function LoginPage() {
 
         {/* Nota registro */}
         {mode === 'register' && (
-          <p style={{ color: '#666', fontSize: '0.8rem', letterSpacing: 1, lineHeight: 1.6, marginBottom: 24 }}>
+          <p style={{ color: '#666', fontSize: '0.8rem', letterSpacing: 1, lineHeight: 1.6, marginBottom: 16 }}>
             Recibirás un email para confirmar tu cuenta antes de poder acceder.
           </p>
+        )}
+
+        {/* Consentimiento */}
+        {mode === 'register' && (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginBottom: 24 }}>
+            <input
+              type="checkbox"
+              checked={consentido}
+              onChange={e => setConsentido(e.target.checked)}
+              style={{ marginTop: 2, width: 16, height: 16, accentColor: '#c8f135', flexShrink: 0, cursor: 'pointer' }}
+            />
+            <span style={{ color: '#999', fontSize: '0.8rem', lineHeight: 1.6 }}>
+              He leído y acepto la Política de Privacidad y los Términos de Uso de Gym Log.
+            </span>
+          </label>
         )}
 
         {/* Error */}
@@ -193,6 +209,7 @@ export default function LoginPage() {
         <SubmitBtn
           label={mode === 'login' ? 'Entrar' : 'Crear cuenta'}
           loading={loading}
+          disabled={mode === 'register' && !consentido}
           onClick={mode === 'login' ? handleLogin : handleRegister}
         />
       </div>
@@ -234,18 +251,19 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   )
 }
 
-function SubmitBtn({ label, loading, onClick }: { label: string; loading: boolean; onClick: () => void }) {
+function SubmitBtn({ label, loading, disabled, onClick }: { label: string; loading: boolean; disabled?: boolean; onClick: () => void }) {
   const [hov, setHov] = useState(false)
+  const isDisabled = loading || disabled
   return (
     <button
       onClick={onClick}
-      disabled={loading}
+      disabled={isDisabled}
       style={{
-        width: '100%', background: hov && !loading ? '#aed62e' : '#c8f135',
+        width: '100%', background: hov && !isDisabled ? '#aed62e' : '#c8f135',
         border: 'none', borderRadius: 10, color: '#0e0e0e',
         ...BB, fontSize: '1.3rem', letterSpacing: 3, padding: 14,
-        cursor: loading ? 'default' : 'pointer',
-        opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s, background 0.15s',
+        cursor: isDisabled ? 'default' : 'pointer',
+        opacity: isDisabled ? 0.4 : 1, transition: 'opacity 0.2s, background 0.15s',
       }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
