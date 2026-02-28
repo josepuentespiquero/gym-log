@@ -630,16 +630,24 @@ function ModeBtn({ active, onClick, children }: { active: boolean; onClick: () =
   )
 }
 
-function RecordDelBtn({ isConfirm, onClick }: { isConfirm: boolean; onClick: () => void }) {
+function RecordDelBtn({ isConfirm, onClick, onCancel }: { isConfirm: boolean; onClick: () => void; onCancel: () => void }) {
   const [hov, setHov] = useState(false)
   if (isConfirm) {
     return (
-      <button
-        onClick={onClick}
-        style={{ background: 'rgba(255,85,85,0.12)', border: '1px solid #ff5555', borderRadius: 6, cursor: 'pointer', padding: '5px 8px', lineHeight: 0, flexShrink: 0 }}
-      >
-        <span style={{ ...BB, fontSize: '0.85rem', letterSpacing: 1, color: '#ff5555' }}>¿BORRAR?</span>
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <button
+          onClick={onClick}
+          style={{ background: 'rgba(255,85,85,0.15)', border: '1px solid #ff5555', borderRadius: 6, cursor: 'pointer', padding: '6px 10px', whiteSpace: 'nowrap' }}
+        >
+          <span style={{ ...BB, fontSize: '0.9rem', letterSpacing: 1, color: '#ff5555' }}>¿BORRAR?</span>
+        </button>
+        <button
+          onClick={onCancel}
+          style={{ background: 'none', border: 'none', color: '#555', fontSize: '0.7rem', cursor: 'pointer', padding: 0, letterSpacing: 0.5 }}
+        >
+          cancelar
+        </button>
+      </div>
     )
   }
   return (
@@ -667,17 +675,18 @@ function HistorialModal({
   onBorrar: (id: string) => void
   onClose: () => void
 }) {
-  const [confirmSet, setConfirmSet] = useState<Set<string>>(new Set())
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleDelete(id: string) {
-    if (confirmSet.has(id)) {
+    if (confirmId === id) {
+      if (confirmTimer.current) clearTimeout(confirmTimer.current)
+      setConfirmId(null)
       onBorrar(id)
-      setConfirmSet(prev => { const s = new Set(prev); s.delete(id); return s })
     } else {
-      setConfirmSet(prev => new Set([...prev, id]))
-      setTimeout(() => {
-        setConfirmSet(prev => { const s = new Set(prev); s.delete(id); return s })
-      }, 3000)
+      if (confirmTimer.current) clearTimeout(confirmTimer.current)
+      setConfirmId(id)
+      confirmTimer.current = setTimeout(() => setConfirmId(null), 3000)
     }
   }
 
@@ -760,7 +769,7 @@ function HistorialModal({
                         {isoToDisplay(e.fecha)} · {e.peso != null ? `${e.peso}kg` : 'sin peso'} · {e.repeticiones} reps · Fallo: {e.fallo} · RIR: {e.reserva ?? 0}
                       </div>
                     </div>
-                    <RecordDelBtn isConfirm={confirmSet.has(e.id)} onClick={() => handleDelete(e.id)} />
+                    <RecordDelBtn isConfirm={confirmId === e.id} onClick={() => handleDelete(e.id)} onCancel={() => setConfirmId(null)} />
                   </div>
                 )
               })
