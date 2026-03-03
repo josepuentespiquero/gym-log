@@ -81,8 +81,9 @@ export default function LoginPage() {
     if (!email) { setError('Introduce tu email.'); return }
     setLoading(true)
     setError(null)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${siteUrl}/auth/reset-password`,
     })
     if (error) {
       setError(translateError(error.message))
