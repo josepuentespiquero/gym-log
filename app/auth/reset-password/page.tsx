@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 const BB: React.CSSProperties = { fontFamily: 'var(--font-bebas)' }
 
@@ -27,33 +27,27 @@ function blurAccent(e: React.FocusEvent<HTMLInputElement>) {
   e.currentTarget.style.borderColor = '#2e2e2e'
 }
 
-function ResetForm() {
+export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [exchanging, setExchanging] = useState(true)
+  const [checking, setChecking] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
   const router = useRouter()
-  const searchParams = useSearchParams()
 
-  // Intercambiar el code por sesión al montar
+  // Verificar que hay sesión activa (puesta por el callback)
   useEffect(() => {
-    const code = searchParams.get('code')
-    if (!code) {
-      setError('El enlace no es válido o ha expirado.')
-      setExchanging(false)
-      return
-    }
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) {
-        setError('El enlace no es válido o ha expirado.')
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        router.replace('/login?error=confirmation_failed')
+      } else {
+        setChecking(false)
       }
-      setExchanging(false)
     })
-  }, [searchParams])
+  }, [router])
 
   async function handleSubmit() {
     if (!password) { setError('Introduce una contraseña.'); return }
@@ -71,50 +65,37 @@ function ResetForm() {
     }
   }
 
-  if (exchanging) {
+  if (checking) {
     return (
-      <p style={{ color: '#666', fontSize: '0.9rem', textAlign: 'center', letterSpacing: 1 }}>
-        Verificando enlace...
-      </p>
+      <PageShell>
+        <p style={{ color: '#666', fontSize: '0.9rem', textAlign: 'center', letterSpacing: 1 }}>
+          Verificando sesión...
+        </p>
+      </PageShell>
     )
   }
 
   if (done) {
     return (
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ ...BB, fontSize: '2rem', color: '#c8f135', letterSpacing: 2, marginBottom: 12 }}>
-          Contraseña actualizada
+      <PageShell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ ...BB, fontSize: '2rem', color: '#c8f135', letterSpacing: 2, marginBottom: 12 }}>
+            Contraseña actualizada
+          </div>
+          <p style={{ color: '#666', fontSize: '0.9rem', lineHeight: 1.7 }}>
+            Redirigiendo al inicio...
+          </p>
         </div>
-        <p style={{ color: '#666', fontSize: '0.9rem', lineHeight: 1.7 }}>
-          Redirigiendo al inicio...
-        </p>
-      </div>
-    )
-  }
-
-  if (error && !password) {
-    // Error en el exchange (enlace inválido)
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ color: '#ff5555', fontSize: '0.9rem', marginBottom: 20 }}>{error}</p>
-        <button
-          onClick={() => router.push('/login')}
-          style={{ background: 'none', border: 'none', color: '#666', fontSize: '0.85rem', cursor: 'pointer', letterSpacing: 1, textTransform: 'uppercase', transition: 'color 0.15s' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#f0f0f0')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#666')}
-        >
-          Volver al inicio de sesión
-        </button>
-      </div>
+      </PageShell>
     )
   }
 
   return (
-    <>
+    <PageShell>
       <div style={{ ...BB, fontSize: '1.6rem', color: '#f0f0f0', letterSpacing: 2, marginBottom: 6 }}>
         Nueva contraseña
       </div>
-      <p style={{ color: '#666', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 24, margin: '0 0 24px' }}>
+      <p style={{ color: '#666', fontSize: '0.85rem', lineHeight: 1.6, margin: '0 0 24px' }}>
         Elige una contraseña nueva para tu cuenta.
       </p>
 
@@ -193,27 +174,19 @@ function ResetForm() {
       >
         {loading ? '...' : 'GUARDAR CONTRASEÑA'}
       </button>
-    </>
+    </PageShell>
   )
 }
 
-export default function ResetPasswordPage() {
+function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ background: '#0e0e0e', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 16px', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}>
-      {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ ...BB, fontSize: '4rem', color: '#c8f135', letterSpacing: 4, lineHeight: 1 }}>
-          GYM LOG
-        </div>
-        <div style={{ color: '#666', fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase', marginTop: 4 }}>
-          registro de entrenamientos
-        </div>
+        <div style={{ ...BB, fontSize: '4rem', color: '#c8f135', letterSpacing: 4, lineHeight: 1 }}>GYM LOG</div>
+        <div style={{ color: '#666', fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase', marginTop: 4 }}>registro de entrenamientos</div>
       </div>
-
       <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 32, width: '100%', maxWidth: 440 }}>
-        <Suspense fallback={<p style={{ color: '#666', textAlign: 'center' }}>Cargando...</p>}>
-          <ResetForm />
-        </Suspense>
+        {children}
       </div>
     </div>
   )
