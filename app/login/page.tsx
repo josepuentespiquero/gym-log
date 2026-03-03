@@ -42,12 +42,13 @@ function SearchParamsReader({ onError }: { onError: (msg: string) => void }) {
 }
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
   const [consentido, setConsentido] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
@@ -76,6 +77,21 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  async function handleForgotPassword() {
+    if (!email) { setError('Introduce tu email.'); return }
+    setLoading(true)
+    setError(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+    if (error) {
+      setError(translateError(error.message))
+    } else {
+      setResetSent(true)
+    }
+    setLoading(false)
+  }
+
   async function handleRegister() {
     if (!email || !password) { setError('Completa todos los campos.'); return }
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
@@ -94,6 +110,38 @@ export default function LoginPage() {
       setRegistered(true)
     }
     setLoading(false)
+  }
+
+  // ── Pantalla de reset enviado ────────────────────────────────────────────────
+  if (resetSent) {
+    return (
+      <div style={{ background: '#0e0e0e', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 16px', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}>
+        <Header />
+        <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 32, width: '100%', maxWidth: 440, textAlign: 'center' }}>
+          <div style={{ ...BB, fontSize: '2.2rem', color: '#c8f135', letterSpacing: 2, marginBottom: 16 }}>
+            Revisa tu email
+          </div>
+          <p style={{ color: '#f0f0f0', fontSize: '1rem', lineHeight: 1.7, marginBottom: 12 }}>
+            Te hemos enviado un enlace para restablecer tu contraseña a:
+          </p>
+          <p style={{ color: '#c8f135', fontSize: '1.1rem', fontWeight: 500, marginBottom: 20, wordBreak: 'break-all' }}>
+            {email}
+          </p>
+          <p style={{ color: '#666', fontSize: '0.9rem', lineHeight: 1.7 }}>
+            Haz clic en el enlace del email para elegir una nueva contraseña.
+          </p>
+          <hr style={{ border: 'none', borderTop: '1px solid #2e2e2e', margin: '24px 0' }} />
+          <button
+            onClick={() => { setResetSent(false); setMode('login'); setEmail(''); setError(null) }}
+            style={{ background: 'none', border: 'none', color: '#666', fontSize: '0.85rem', cursor: 'pointer', letterSpacing: 1, textTransform: 'uppercase', transition: 'color 0.15s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#f0f0f0')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#666')}
+          >
+            Volver al inicio de sesión
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // ── Pantalla de confirmación pendiente ──────────────────────────────────────
@@ -140,10 +188,24 @@ export default function LoginPage() {
       <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 32, width: '100%', maxWidth: 440 }}>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
-          <TabBtn active={mode === 'login'} onClick={() => { setMode('login'); setError(null); setConsentido(false) }}>Entrar</TabBtn>
-          <TabBtn active={mode === 'register'} onClick={() => { setMode('register'); setError(null); setConsentido(false) }}>Crear cuenta</TabBtn>
-        </div>
+        {mode !== 'forgot' && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
+            <TabBtn active={mode === 'login'} onClick={() => { setMode('login'); setError(null); setConsentido(false) }}>Entrar</TabBtn>
+            <TabBtn active={mode === 'register'} onClick={() => { setMode('register'); setError(null); setConsentido(false) }}>Crear cuenta</TabBtn>
+          </div>
+        )}
+
+        {/* Título modo forgot */}
+        {mode === 'forgot' && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ ...BB, fontSize: '1.6rem', color: '#f0f0f0', letterSpacing: 2, marginBottom: 6 }}>
+              Restablecer contraseña
+            </div>
+            <p style={{ color: '#666', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+              Introduce tu email y te enviaremos un enlace para elegir una nueva contraseña.
+            </p>
+          </div>
+        )}
 
         {/* Email */}
         <div style={{ marginBottom: 20 }}>
@@ -157,47 +219,68 @@ export default function LoginPage() {
             style={INPUT}
             onFocus={focusAccent}
             onBlur={blurAccent}
-            onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleRegister())}
+            onKeyDown={e => {
+              if (e.key !== 'Enter') return
+              if (mode === 'login') handleLogin()
+              else if (mode === 'register') handleRegister()
+              else handleForgotPassword()
+            }}
           />
         </div>
 
-        {/* Contraseña */}
-        <div style={{ marginBottom: mode === 'register' ? 12 : 24 }}>
-          <div style={{ fontSize: '0.95rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 12 }}>Contraseña</div>
-          <div style={{ position: 'relative' }}>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              style={{ ...INPUT, paddingRight: 52 }}
-              onFocus={focusAccent}
-              onBlur={blurAccent}
-              onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleRegister())}
-            />
+        {/* Contraseña (solo en login y register) */}
+        {mode !== 'forgot' && (
+          <div style={{ marginBottom: mode === 'register' ? 12 : 8 }}>
+            <div style={{ fontSize: '0.95rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 12 }}>Contraseña</div>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                style={{ ...INPUT, paddingRight: 52 }}
+                onFocus={focusAccent}
+                onBlur={blurAccent}
+                onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleRegister())}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 0, color: showPassword ? '#c8f135' : '#555', transition: 'color 0.15s' }}
+                tabIndex={-1}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPassword ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Enlace olvidé contraseña (solo en login) */}
+        {mode === 'login' && (
+          <div style={{ textAlign: 'right', marginBottom: 24 }}>
             <button
-              type="button"
-              onClick={() => setShowPassword(v => !v)}
-              style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, lineHeight: 0, color: showPassword ? '#c8f135' : '#555', transition: 'color 0.15s' }}
-              tabIndex={-1}
-              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              onClick={() => { setMode('forgot'); setError(null) }}
+              style={{ background: 'none', border: 'none', color: '#666', fontSize: '0.8rem', cursor: 'pointer', letterSpacing: 0.5, transition: 'color 0.15s', padding: 0 }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#c8f135')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#666')}
             >
-              {showPassword ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
+              ¿Olvidaste tu contraseña?
             </button>
           </div>
-        </div>
+        )}
 
         {/* Nota registro */}
         {mode === 'register' && (
@@ -234,11 +317,25 @@ export default function LoginPage() {
 
         {/* Submit */}
         <SubmitBtn
-          label={mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+          label={mode === 'login' ? 'Entrar' : mode === 'register' ? 'Crear cuenta' : 'Enviar enlace'}
           loading={loading}
           disabled={mode === 'register' && !consentido}
-          onClick={mode === 'login' ? handleLogin : handleRegister}
+          onClick={mode === 'login' ? handleLogin : mode === 'register' ? handleRegister : handleForgotPassword}
         />
+
+        {/* Volver desde forgot */}
+        {mode === 'forgot' && (
+          <div style={{ textAlign: 'center', marginTop: 20 }}>
+            <button
+              onClick={() => { setMode('login'); setError(null) }}
+              style={{ background: 'none', border: 'none', color: '#666', fontSize: '0.8rem', cursor: 'pointer', letterSpacing: 1, textTransform: 'uppercase', transition: 'color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#f0f0f0')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#666')}
+            >
+              Volver al inicio de sesión
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
