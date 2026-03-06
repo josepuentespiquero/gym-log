@@ -7,7 +7,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  console.log('[send-reset] POST received')
+  try {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { email } = await request.json()
   if (!email) return NextResponse.json({ error: 'Email requerido' }, { status: 400 })
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password` },
   })
 
-  if (error || !data.properties?.hashed_token) {
+  if (error || !data?.properties?.hashed_token) {
     return NextResponse.json({ error: 'generateLink failed', detail: error?.message }, { status: 500 })
   }
 
@@ -59,4 +59,8 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: 'uncaught', detail: msg }, { status: 500 })
+  }
 }
