@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   })
 
   if (error || !data.properties?.hashed_token) {
-    return NextResponse.json({ error: 'No se pudo generar el enlace' }, { status: 500 })
+    return NextResponse.json({ error: 'generateLink failed', detail: error?.message }, { status: 500 })
   }
 
   const resetUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password?token_hash=${data.properties.hashed_token}&type=recovery`
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   })
 
   if (emailError) {
-    return NextResponse.json({ error: 'No se pudo enviar el email' }, { status: 500 })
+    return NextResponse.json({ error: 'resend failed', detail: emailError.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

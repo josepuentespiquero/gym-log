@@ -109,6 +109,8 @@ export default function LoginPage() {
       body: JSON.stringify({ email }),
     })
     if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      console.error('[send-reset error]', body)
       setError('No se pudo enviar el email. Inténtalo de nuevo.')
     } else {
       setResetSent(true)
