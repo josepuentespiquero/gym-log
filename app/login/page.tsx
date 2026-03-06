@@ -67,10 +67,10 @@ export default function LoginPage() {
     // Implicit flow: #access_token=...&type=recovery en el hash
     const hash = window.location.hash.slice(1)
     if (!hash) return
-    const params = new URLSearchParams(hash)
-    if (params.get('type') !== 'recovery') return
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
+    const hashParams = new URLSearchParams(hash)
+    if (hashParams.get('type') !== 'recovery') return
+    const accessToken = hashParams.get('access_token')
+    const refreshToken = hashParams.get('refresh_token')
     if (!accessToken || !refreshToken) return
     supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
       .then(() => router.push('/auth/reset-password'))
