@@ -138,7 +138,7 @@ export default function LoginPage() {
             Revisa tu email
           </div>
           <p style={{ color: '#f0f0f0', fontSize: '1rem', lineHeight: 1.7, marginBottom: 12 }}>
-            Te hemos enviado un enlace para restablecer tu contraseña a:
+            Te hemos enviado un enlace para restablecer tu contraseña a (ojo por si te llega a la carpeta de Spam):
           </p>
           <p style={{ color: '#c8f135', fontSize: '1.1rem', fontWeight: 500, marginBottom: 20, wordBreak: 'break-all' }}>
             {email}
