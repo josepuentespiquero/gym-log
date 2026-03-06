@@ -57,10 +57,11 @@ export default function LoginPage() {
   // Supabase redirige aquí con el token de recuperación (Site URL apunta a /login)
   // Manejar tanto PKCE (?code=) como implicit flow (#access_token=...&type=recovery)
   useEffect(() => {
-    // PKCE flow: ?code= en la URL — delegar al server-side callback que maneja PKCE correctamente
-    const code = new URLSearchParams(window.location.search).get('code')
-    if (code) {
-      window.location.href = `/auth/callback?code=${code}&next=/auth/reset-password`
+    // Si el link de recovery acaba aquí, redirigir a reset-password con los params intactos
+    const params = new URLSearchParams(window.location.search)
+    const tokenHash = params.get('token_hash')
+    if (tokenHash && params.get('type') === 'recovery') {
+      router.push(`/auth/reset-password?token_hash=${tokenHash}&type=recovery`)
       return
     }
     // Implicit flow: #access_token=...&type=recovery en el hash

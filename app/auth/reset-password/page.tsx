@@ -40,18 +40,21 @@ export default function ResetPasswordPage() {
 
   // Establecer sesión desde el token de la URL
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('code')
+    const params = new URLSearchParams(window.location.search)
+    const tokenHash = params.get('token_hash')
+    const type = params.get('type')
 
-    if (code) {
-      // Flujo PKCE: ?code= en la URL — createBrowserClient no lo intercambia automáticamente
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) router.replace('/login?error=confirmation_failed')
-        else setChecking(false)
-      })
+    if (tokenHash && type === 'recovery') {
+      // Verificación directa con token_hash — no requiere PKCE ni code verifier
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        .then(({ error }) => {
+          if (error) router.replace('/login?error=confirmation_failed')
+          else setChecking(false)
+        })
       return
     }
 
-    // Sesión ya activa (implicit flow procesado en login, o recarga de página)
+    // Sesión ya activa (recarga de página)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setChecking(false)
       else router.replace('/login?error=confirmation_failed')
