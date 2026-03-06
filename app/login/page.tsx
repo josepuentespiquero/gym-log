@@ -54,6 +54,13 @@ export default function LoginPage() {
 
   const router = useRouter()
 
+  // Si Supabase redirige aquí con un token de recuperación en el hash, redirigir a la página correcta
+  useEffect(() => {
+    if (window.location.hash.includes('type=recovery')) {
+      window.location.href = '/auth/reset-password' + window.location.hash
+    }
+  }, [])
+
   function translateError(msg: string): string {
     if (msg.includes('Invalid login credentials')) return 'Email o contraseña incorrectos.'
     if (msg.includes('Email not confirmed')) return 'Debes confirmar tu email antes de iniciar sesión.'
