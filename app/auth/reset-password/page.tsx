@@ -38,39 +38,24 @@ export default function ResetPasswordPage() {
 
   const router = useRouter()
 
-  // Esperar a que el cliente Supabase procese el token de la URL
-  // (funciona con PKCE ?code= y con implicit flow #access_token=)
+  // Establecer sesión desde el token de la URL
   useEffect(() => {
-    let resolved = false
+    const code = new URLSearchParams(window.location.search).get('code')
 
-    function resolve() {
-      if (!resolved) {
-        resolved = true
-        setChecking(false)
-      }
+    if (code) {
+      // Flujo PKCE: ?code= en la URL — createBrowserClient no lo intercambia automáticamente
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) router.replace('/login?error=confirmation_failed')
+        else setChecking(false)
+      })
+      return
     }
 
-    // Detecta PASSWORD_RECOVERY (implicit) o SIGNED_IN (PKCE) tras procesar el token de la URL
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        resolve()
-      }
-    })
-
-    // Si ya hay sesión activa (recarga de página), no esperar al evento
+    // Sesión ya activa (implicit flow procesado en login, o recarga de página)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) resolve()
+      if (session) setChecking(false)
+      else router.replace('/login?error=confirmation_failed')
     })
-
-    // Timeout: si en 5s no hay sesión, redirigir al login
-    const timeout = setTimeout(() => {
-      if (!resolved) router.replace('/login?error=confirmation_failed')
-    }, 5000)
-
-    return () => {
-      subscription.unsubscribe()
-      clearTimeout(timeout)
-    }
   }, [router])
 
   async function handleSubmit() {
