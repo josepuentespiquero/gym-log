@@ -54,12 +54,15 @@ export default function LoginPage() {
 
   const router = useRouter()
 
-  // Si Supabase redirige aquí con un token de recuperación en el hash, redirigir a la página correcta
+  // Si Supabase redirige aquí con un token de recuperación, el cliente lo detecta y dispara PASSWORD_RECOVERY
   useEffect(() => {
-    if (window.location.hash.includes('type=recovery')) {
-      window.location.href = '/auth/reset-password' + window.location.hash
-    }
-  }, [])
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        router.push('/auth/reset-password')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [router])
 
   function translateError(msg: string): string {
     if (msg.includes('Invalid login credentials')) return 'Email o contraseña incorrectos.'
