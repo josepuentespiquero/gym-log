@@ -2,7 +2,12 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { NextResponse } from 'next/server'
 
+export async function GET() {
+  return NextResponse.json({ ok: true, env: { resend: !!process.env.RESEND_API_KEY, serviceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY, siteUrl: process.env.NEXT_PUBLIC_SITE_URL } })
+}
+
 export async function POST(request: Request) {
+  console.log('[send-reset] POST received')
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { email } = await request.json()
   if (!email) return NextResponse.json({ error: 'Email requerido' }, { status: 400 })
