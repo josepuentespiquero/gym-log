@@ -60,7 +60,9 @@ export default function LoginPage() {
     // PKCE flow: ?code= en la URL
     const code = new URLSearchParams(window.location.search).get('code')
     if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      console.log('[recovery] code encontrado:', code)
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        console.log('[recovery] exchangeCodeForSession result:', { data, error })
         if (!error) router.push('/auth/reset-password')
       })
       return
