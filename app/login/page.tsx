@@ -103,12 +103,13 @@ export default function LoginPage() {
     if (!email) { setError('Introduce tu email.'); return }
     setLoading(true)
     setError(null)
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/auth/reset-password`,
+    const res = await fetch('/api/auth/send-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     })
-    if (error) {
-      setError(translateError(error.message))
+    if (!res.ok) {
+      setError('No se pudo enviar el email. Inténtalo de nuevo.')
     } else {
       setResetSent(true)
     }
