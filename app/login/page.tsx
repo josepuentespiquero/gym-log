@@ -54,10 +54,18 @@ export default function LoginPage() {
 
   const router = useRouter()
 
-  // Si Supabase redirige aquí con token de recuperación en el hash (implicit flow),
-  // parsear manualmente y establecer sesión porque createBrowserClient de @supabase/ssr
-  // no procesa hash fragments automáticamente
+  // Supabase redirige aquí con el token de recuperación (Site URL apunta a /login)
+  // Manejar tanto PKCE (?code=) como implicit flow (#access_token=...&type=recovery)
   useEffect(() => {
+    // PKCE flow: ?code= en la URL
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) router.push('/auth/reset-password')
+      })
+      return
+    }
+    // Implicit flow: #access_token=...&type=recovery en el hash
     const hash = window.location.hash.slice(1)
     if (!hash) return
     const params = new URLSearchParams(hash)
