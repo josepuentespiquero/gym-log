@@ -54,14 +54,19 @@ export default function LoginPage() {
 
   const router = useRouter()
 
-  // Si Supabase redirige aquí con un token de recuperación, el cliente lo detecta y dispara PASSWORD_RECOVERY
+  // Si Supabase redirige aquí con token de recuperación en el hash (implicit flow),
+  // parsear manualmente y establecer sesión porque createBrowserClient de @supabase/ssr
+  // no procesa hash fragments automáticamente
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        router.push('/auth/reset-password')
-      }
-    })
-    return () => subscription.unsubscribe()
+    const hash = window.location.hash.slice(1)
+    if (!hash) return
+    const params = new URLSearchParams(hash)
+    if (params.get('type') !== 'recovery') return
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+    if (!accessToken || !refreshToken) return
+    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .then(() => router.push('/auth/reset-password'))
   }, [router])
 
   function translateError(msg: string): string {
