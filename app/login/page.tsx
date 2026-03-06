@@ -103,7 +103,7 @@ export default function LoginPage() {
     if (!email) { setError('Introduce tu email.'); return }
     setLoading(true)
     setError(null)
-    const res = await fetch('/api/auth/send-reset', {
+    const res = await fetch('/api/send-reset', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
