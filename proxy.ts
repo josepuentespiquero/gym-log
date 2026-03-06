@@ -29,9 +29,10 @@ export async function proxy(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname.startsWith('/login')
   const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/callback')
   const isLegal = request.nextUrl.pathname.startsWith('/legal')
+  const isApi = request.nextUrl.pathname.startsWith('/api/')
 
-  // Sin sesión → redirigir a login (salvo que ya estés ahí, en el callback o en /legal)
-  if (!user && !isLoginPage && !isAuthCallback && !isLegal) {
+  // Sin sesión → redirigir a login (salvo que ya estés ahí, en el callback, /legal o /api/)
+  if (!user && !isLoginPage && !isAuthCallback && !isLegal && !isApi) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
