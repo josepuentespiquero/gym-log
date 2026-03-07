@@ -37,6 +37,25 @@ function isoToDisplay(iso: string): string {
   return `${d}/${m}/${String(y).slice(2)}`
 }
 
+// Converts ISO "YYYY-MM-DD" → "DD/MM/YYYY" for display in profile form
+function isoToDisplayFull(iso: string): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`
+}
+
+// Parses "DD/MM/YYYY" → ISO "YYYY-MM-DD", returns null if invalid
+function displayFullToISO(str: string): string | null {
+  if (!str.trim()) return ''
+  const match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!match) return null
+  const [, d, m, y] = match.map(Number)
+  const date = new Date(y, m - 1, d)
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null
+  if (y < 1900 || y > new Date().getFullYear()) return null
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
 function diasDesde(iso: string): string {
   const [fy, fm, fd] = iso.split('-').map(Number)
   const now = new Date()
@@ -184,16 +203,14 @@ function SerieItem({ s, numSerie, onDelete }: { s: SeriePendiente; numSerie: num
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes } = useEntrenamientos()
+  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, semanasAnio, refetch } = useEntrenamientos()
   const router = useRouter()
 
   // Auth
-  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      setUserEmail(user.email ?? null)
       supabase.from('usuarios').select('rol').eq('email', user.email).single()
         .then(({ data }) => { if (data?.rol === 'admin') setIsAdmin(true) })
     })
@@ -203,6 +220,61 @@ export default function Home() {
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
+  }
+
+  // Perfil
+  const [showPerfil, setShowPerfil] = useState(false)
+  const [perfilForm, setPerfilForm] = useState({ meta_semanal: '3', fecha_nacimiento: '', peso: '' })
+  const [cargandoPerfil, setCargandoPerfil] = useState(false)
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false)
+  const [perfilFechaError, setPerfilFechaError] = useState('')
+
+  async function abrirPerfil() {
+    setShowPerfil(true)
+    setCargandoPerfil(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.email) {
+      const { data } = await supabase
+        .from('usuarios')
+        .select('meta_semanal, fecha_nacimiento, peso')
+        .eq('email', user.email)
+        .single()
+      if (data) {
+        setPerfilForm({
+          meta_semanal: String(data.meta_semanal ?? 3),
+          fecha_nacimiento: isoToDisplayFull(data.fecha_nacimiento ?? ''),
+          peso: data.peso != null ? String(data.peso) : '',
+        })
+      }
+    }
+    setCargandoPerfil(false)
+  }
+
+  async function guardarPerfil() {
+    const isoFecha = displayFullToISO(perfilForm.fecha_nacimiento)
+    if (isoFecha === null) {
+      setPerfilFechaError('Formato inválido. Usa DD/MM/YYYY')
+      return
+    }
+    setPerfilFechaError('')
+    setGuardandoPerfil(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.email) {
+      const { error } = await supabase.from('usuarios').update({
+        meta_semanal: Number(perfilForm.meta_semanal) || 0,
+        fecha_nacimiento: isoFecha || null,
+        peso: perfilForm.peso ? Number(perfilForm.peso) : null,
+      }).eq('email', user.email)
+      if (error) {
+        setGuardandoPerfil(false)
+        showToast(`Error: ${error.message}`)
+        return
+      }
+      await refetch()
+    }
+    setGuardandoPerfil(false)
+    setShowPerfil(false)
+    showToast('Perfil guardado')
   }
 
   // Form state — empty string on server to avoid timezone-based hydration mismatch
@@ -352,13 +424,20 @@ export default function Home() {
       <div style={{ width: '100%', maxWidth: 440, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div style={{ ...BB, fontSize: '3.5rem', color: '#c8f135', letterSpacing: 4, lineHeight: 1 }}>GYM LOG</div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-            {userEmail && (
-              <span style={{ color: '#666', fontSize: '0.75rem', letterSpacing: 1, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {userEmail}
-              </span>
-            )}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {/* Icono perfil */}
+              <button
+                onClick={abrirPerfil}
+                title="Mi perfil"
+                style={{ background: 'none', border: '1px solid #2e2e2e', borderRadius: 6, color: '#666', padding: '4px 8px', cursor: 'pointer', lineHeight: 0, transition: 'color 0.15s, border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0'; e.currentTarget.style.borderColor = '#f0f0f0' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2e2e2e' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => router.push('/admin')}
@@ -380,10 +459,65 @@ export default function Home() {
             >
               Salir
             </button>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* ── Habit Tracker ────────────────────────────────────────── */}
+      {!loading && (
+        <div style={{ width: '100%', maxWidth: 440, marginBottom: 16, display: 'flex', gap: 10 }}>
+
+          {/* RACHA */}
+          <div style={{ flex: '1 1 0', minWidth: 0, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 16 }}>
+            <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666', marginBottom: 10 }}>Racha</div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ ...BB, fontSize: '3rem', color: racha > 0 ? '#f0f0f0' : '#444', lineHeight: 1 }}>{racha}</span>
+                  <span style={{ color: '#666', fontSize: '0.7rem' }}>sem.</span>
+                </div>
+                {racha === 0
+                  ? <div style={{ color: '#555', fontSize: '0.6rem', marginTop: 6, letterSpacing: '0.5px', lineHeight: 1.4 }}>Empieza<br />esta semana</div>
+                  : <div style={{ marginTop: 6 }}><span style={{ fontSize: '0.8rem' }}>🔥</span></div>
+                }
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 2.5, alignContent: 'flex-start' }}>
+                {semanasAnio.map((estado, i) => (
+                  <div key={i} style={{
+                    width: 8, height: 8, borderRadius: 2, flexShrink: 0,
+                    background:
+                      estado === 'achieved' ? '#3B82F6' :
+                      estado === 'partial'  ? '#1E3A5F' :
+                      estado === 'future'   ? '#222' :
+                      '#2e2e2e',
+                  }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ESTA SEMANA */}
+          <div style={{ flex: '1 1 0', minWidth: 0, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 16 }}>
+            <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Esta semana</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
+              <span style={{ ...BB, fontSize: '3rem', color: '#f0f0f0', lineHeight: 1 }}>{sesionesEstaSemana}</span>
+              <span style={{ color: '#666', fontSize: '0.85rem' }}>/ {metaSemanal}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
+              {Array.from({ length: metaSemanal }).map((_, i) => (
+                <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < sesionesEstaSemana ? '#c8f135' : '#2e2e2e', flexShrink: 0 }} />
+              ))}
+            </div>
+            <div style={{ background: '#2e2e2e', borderRadius: 4, height: 4, overflow: 'hidden' }}>
+              <div style={{ background: '#c8f135', height: '100%', width: `${Math.min((sesionesEstaSemana / metaSemanal) * 100, 100)}%`, borderRadius: 4 }} />
+            </div>
+            {sesionesEstaSemana >= metaSemanal && (
+              <div style={{ color: '#c8f135', fontSize: '0.7rem', marginTop: 6, letterSpacing: '0.5px' }}>Meta cumplida ✓</div>
+            )}
+          </div>
+
+        </div>
+      )}
 
       {/* ── Card ──────────────────────────────────────────────────── */}
       <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 32, width: '100%', maxWidth: 440 }}>
@@ -596,6 +730,18 @@ export default function Home() {
           onClose={() => setModalOpen(false)}
         />
       )}
+
+      {showPerfil && (
+        <PerfilModal
+          form={perfilForm}
+          setForm={(v) => { setPerfilForm(v); setPerfilFechaError('') }}
+          cargando={cargandoPerfil}
+          guardando={guardandoPerfil}
+          fechaError={perfilFechaError}
+          onGuardar={guardarPerfil}
+          onClose={() => setShowPerfil(false)}
+        />
+      )}
     </div>
   )
 }
@@ -762,6 +908,109 @@ function HistorialModal({
                   </div>
                 )
               })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Perfil Modal ─────────────────────────────────────────────────────────────
+
+function PerfilModal({
+  form, setForm, cargando, guardando, fechaError, onGuardar, onClose,
+}: {
+  form: { meta_semanal: string; fecha_nacimiento: string; peso: string }
+  setForm: (v: { meta_semanal: string; fecha_nacimiento: string; peso: string }) => void
+  cargando: boolean
+  guardando: boolean
+  fechaError: string
+  onGuardar: () => void
+  onClose: () => void
+}) {
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, padding: '20px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, width: '100%', maxWidth: 440, overflow: 'hidden' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2e2e2e' }}>
+          <span style={{ ...BB, fontSize: '1.4rem', letterSpacing: 2, color: '#c8f135' }}>Mi Perfil</span>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: '1px solid #2e2e2e', borderRadius: 6, color: '#666', fontSize: '1rem', padding: '4px 10px', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0'; e.currentTarget.style.borderColor = '#f0f0f0' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2e2e2e' }}
+          >✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {cargando ? (
+            <div style={{ color: '#666', textAlign: 'center', padding: '32px 0', fontSize: '0.9rem' }}>Cargando...</div>
+          ) : (
+            <>
+              {/* Objetivo semanal */}
+              <div>
+                <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Objetivo semanal (días)</div>
+                <input
+                  type="number" min="1" max="7"
+                  value={form.meta_semanal}
+                  onChange={e => setForm({ ...form, meta_semanal: e.target.value })}
+                  style={{ ...INPUT, fontSize: '1.4rem' }}
+                  onFocus={focusAccent}
+                  onBlur={blurAccent}
+                />
+              </div>
+
+              {/* Fecha de nacimiento */}
+              <div>
+                <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Fecha de nacimiento</div>
+                <input
+                  type="text"
+                  value={form.fecha_nacimiento}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 8)
+                    let fmt = digits
+                    if (digits.length > 4) fmt = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+                    else if (digits.length > 2) fmt = `${digits.slice(0, 2)}/${digits.slice(2)}`
+                    setForm({ ...form, fecha_nacimiento: fmt })
+                  }}
+                  placeholder="DD/MM/YYYY"
+                  style={{ ...INPUT, fontSize: '1.4rem', borderColor: fechaError ? '#ff5555' : undefined }}
+                  onFocus={focusAccent}
+                  onBlur={blurAccent}
+                />
+                {fechaError && (
+                  <div style={{ color: '#ff5555', fontSize: '0.75rem', marginTop: 6, letterSpacing: '0.5px' }}>{fechaError}</div>
+                )}
+              </div>
+
+              {/* Peso corporal */}
+              <div>
+                <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Peso (kg)</div>
+                <input
+                  type="number" min="0" step="0.1"
+                  value={form.peso}
+                  onChange={e => setForm({ ...form, peso: e.target.value })}
+                  placeholder="70"
+                  style={{ ...INPUT, fontSize: '1.4rem' }}
+                  onFocus={focusAccent}
+                  onBlur={blurAccent}
+                />
+              </div>
+
+              {/* Guardar */}
+              <button
+                onClick={onGuardar}
+                disabled={guardando}
+                style={{ background: '#c8f135', border: 'none', borderRadius: 10, color: '#0e0e0e', ...BB, fontSize: '1.2rem', letterSpacing: 3, padding: 14, cursor: 'pointer', opacity: guardando ? 0.6 : 1, transition: 'opacity 0.2s' }}
+              >
+                {guardando ? 'GUARDANDO...' : 'GUARDAR'}
+              </button>
+            </>
           )}
         </div>
       </div>
