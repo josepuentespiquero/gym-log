@@ -40,18 +40,31 @@ export async function GET() {
 
   const [
     { count: totalUsers },
-    { data: activeUsers, error: rpcError },
+    { data: lastActivities },
     { count: newThisWeek },
   ] = await Promise.all([
     supabaseAdmin.from('usuarios').select('*', { count: 'exact', head: true }),
-    supabaseAdmin.rpc('get_active_users'),
+    supabaseAdmin.from('entrenamientos').select('usuario, created_at'),
     supabaseAdmin.from('usuarios').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
   ])
 
+  // Group by usuario, find most recent activity per user
+  const lastByUser = new Map<string, string>()
+  for (const e of lastActivities ?? []) {
+    const prev = lastByUser.get(e.usuario)
+    if (!prev || e.created_at > prev) lastByUser.set(e.usuario, e.created_at)
+  }
+
+  // Count users active in the last 7 days
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+  let activeUsers = 0
+  for (const lastActivity of lastByUser.values()) {
+    if (new Date(lastActivity).getTime() >= cutoff) activeUsers++
+  }
+
   return NextResponse.json({
     totalUsers: totalUsers ?? 0,
-    activeUsers: activeUsers ?? 0,
+    activeUsers,
     newThisWeek: newThisWeek ?? 0,
-    _debug: { activeUsersRaw: activeUsers, rpcError: rpcError?.message },
   })
 }
