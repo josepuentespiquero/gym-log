@@ -39,11 +39,11 @@ export async function GET() {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   const [
-    { count: totalUsers },
+    { data: usuarios },
     { data: lastActivities },
     { count: newThisWeek },
   ] = await Promise.all([
-    supabaseAdmin.from('usuarios').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('usuarios').select('email, created_at').order('created_at', { ascending: false }),
     supabaseAdmin.from('entrenamientos').select('usuario, created_at'),
     supabaseAdmin.from('usuarios').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
   ])
@@ -62,9 +62,16 @@ export async function GET() {
     if (new Date(lastActivity).getTime() >= cutoff) activeUsers++
   }
 
+  const now = Date.now()
+  const userList = (usuarios ?? []).map(u => ({
+    email: u.email,
+    diasDesdeRegistro: Math.floor((now - new Date(u.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+  }))
+
   return NextResponse.json({
-    totalUsers: totalUsers ?? 0,
+    totalUsers: userList.length,
     activeUsers,
     newThisWeek: newThisWeek ?? 0,
+    usuarios: userList,
   })
 }
