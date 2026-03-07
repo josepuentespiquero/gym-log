@@ -121,15 +121,13 @@ export default function LoginPage() {
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     })
-    if (error) {
-      setError(translateError(error.message))
+    if (!res.ok) {
+      setError('No se pudo crear la cuenta. Inténtalo de nuevo.')
     } else {
       setRegistered(true)
     }
