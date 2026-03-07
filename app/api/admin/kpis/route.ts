@@ -40,7 +40,7 @@ export async function GET() {
 
   const [
     { count: totalUsers },
-    { data: activeUsers },
+    { data: activeUsers, error: rpcError },
     { count: newThisWeek },
   ] = await Promise.all([
     supabaseAdmin.from('usuarios').select('*', { count: 'exact', head: true }),
@@ -52,6 +52,6 @@ export async function GET() {
     totalUsers: totalUsers ?? 0,
     activeUsers: activeUsers ?? 0,
     newThisWeek: newThisWeek ?? 0,
-    _debug: { activeUsersRaw: activeUsers },
+    _debug: { activeUsersRaw: activeUsers, rpcError: rpcError?.message },
   })
 }
