@@ -52,5 +52,6 @@ export async function GET() {
     totalUsers: totalUsers ?? 0,
     activeUsers: activeUsers ?? 0,
     newThisWeek: newThisWeek ?? 0,
+    _debug: { activeUsersRaw: activeUsers },
   })
 }
