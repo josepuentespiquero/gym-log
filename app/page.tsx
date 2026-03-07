@@ -189,8 +189,14 @@ export default function Home() {
 
   // Auth
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUserEmail(user?.email ?? null))
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      setUserEmail(user.email ?? null)
+      supabase.from('usuarios').select('rol').eq('email', user.email).single()
+        .then(({ data }) => { if (data?.rol === 'admin') setIsAdmin(true) })
+    })
   }, [])
 
   async function handleLogout() {
@@ -352,14 +358,29 @@ export default function Home() {
                 {userEmail}
               </span>
             )}
-            <button
-              onClick={handleLogout}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {isAdmin && (
+                <button
+                  onClick={() => router.push('/admin')}
+                  title="Panel de administración"
+                  style={{ background: 'rgba(200,241,53,0.1)', border: '1px solid rgba(200,241,53,0.3)', borderRadius: 6, color: '#c8f135', padding: '4px 8px', cursor: 'pointer', lineHeight: 0, transition: 'background 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,241,53,0.2)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(200,241,53,0.1)' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
               style={{ background: 'none', border: '1px solid #2e2e2e', borderRadius: 6, color: '#666', fontSize: '0.7rem', letterSpacing: '1.5px', textTransform: 'uppercase', padding: '4px 10px', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#ff5555'; e.currentTarget.style.borderColor = '#ff5555' }}
               onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2e2e2e' }}
             >
               Salir
             </button>
+            </div>
           </div>
         </div>
       </div>
