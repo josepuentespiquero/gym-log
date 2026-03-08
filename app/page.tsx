@@ -203,7 +203,7 @@ function SerieItem({ s, numSerie, onDelete }: { s: SeriePendiente; numSerie: num
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, semanasAnio, refetch } = useEntrenamientos()
+  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, semanasAnio, refetch } = useEntrenamientos()
   const router = useRouter()
 
   // Auth
@@ -277,6 +277,7 @@ export default function Home() {
 
   // Meta semanal
   const [showEditMeta, setShowEditMeta] = useState(false)
+  const [showCalendario, setShowCalendario] = useState(false)
   const [editMetaVal, setEditMetaVal] = useState('3')
   const [guardandoMeta, setGuardandoMeta] = useState(false)
 
@@ -435,7 +436,8 @@ export default function Home() {
     return all.filter(e =>
       e.ejercicio.toLowerCase().includes(q) ||
       e.fecha.includes(q) ||
-      isoToDisplay(e.fecha).includes(q)
+      isoToDisplay(e.fecha).includes(q) ||
+      isoToDisplayFull(e.fecha).includes(q)
     )
   }, [entrenamientos, busqueda])
 
@@ -506,9 +508,10 @@ export default function Home() {
                   : <div style={{ marginTop: 6 }}><span style={{ fontSize: '0.8rem' }}>🔥</span></div>
                 }
               </div>
-              <div style={{ flex: 1, position: 'relative' }}
-                onMouseEnter={e => { const leg = e.currentTarget.querySelector('.grid-legend') as HTMLElement; if (leg) leg.style.opacity = '1' }}
-                onMouseLeave={e => { const leg = e.currentTarget.querySelector('.grid-legend') as HTMLElement; if (leg) leg.style.opacity = '0' }}
+              <div
+                style={{ flex: 1, cursor: 'pointer' }}
+                onClick={() => setShowCalendario(true)}
+                title="Ver actividad por días"
               >
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, alignContent: 'flex-start' }}>
                   {semanasAnio.map((estado, i) => (
@@ -521,22 +524,6 @@ export default function Home() {
                         '#2e2e2e',
                     }} />
                   ))}
-                </div>
-                <div className="grid-legend" style={{
-                  opacity: 0, transition: 'opacity 0.2s',
-                  position: 'absolute', bottom: 0, right: 0,
-                  background: '#111', border: '1px solid #2e2e2e', borderRadius: 6,
-                  padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4,
-                  pointerEvents: 'none',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 2, background: '#3B82F6', flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.7rem', color: '#aaa', whiteSpace: 'nowrap' }}>Semana completada</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 2, background: '#1E3A5F', flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.7rem', color: '#aaa', whiteSpace: 'nowrap' }}>Semana parcial</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -560,7 +547,7 @@ export default function Home() {
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
-              <span style={{ ...BB, fontSize: '3rem', color: '#f0f0f0', lineHeight: 1 }}>{sesionesEstaSemana}</span>
+              <span style={{ ...BB, fontSize: '3rem', color: sesionesEstaSemana >= metaSemanal ? '#3B82F6' : '#f0f0f0', lineHeight: 1 }}>{sesionesEstaSemana}</span>
               <span style={{ color: '#666', fontSize: '0.85rem' }}>/ {metaSemanal}</span>
             </div>
             <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
@@ -813,6 +800,10 @@ export default function Home() {
           onClose={() => setShowEditMeta(false)}
         />
       )}
+
+      {showCalendario && (
+        <CalendarioModal entrenamientos={entrenamientos} metaSemanal={metaSemanal} fechaInicioMeta={fechaInicioMeta} onClose={() => setShowCalendario(false)} />
+      )}
     </div>
   )
 }
@@ -1042,6 +1033,144 @@ function EditMetaModal({
           >
             {guardando ? 'GUARDANDO...' : 'GUARDAR'}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Calendario Modal ────────────────────────────────────────────────────────
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+function buildMonthCells(year: number, month: number): (number | null)[] {
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7 // 0=lun, 6=dom
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: (number | null)[] = Array(firstDow).fill(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+  return cells
+}
+
+function calISOWeekKey(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const dow = date.getDay() || 7
+  date.setDate(date.getDate() + 4 - dow)
+  const yearStart = new Date(date.getFullYear(), 0, 1)
+  const weekNum = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+  return `${date.getFullYear()}-${String(weekNum).padStart(2, '0')}`
+}
+
+function CalendarioModal({ entrenamientos, metaSemanal, fechaInicioMeta, onClose }: {
+  entrenamientos: Entrenamiento[]
+  metaSemanal: number
+  fechaInicioMeta: string | null
+  onClose: () => void
+}) {
+  const activeDays = new Set(entrenamientos.map(e => e.fecha))
+
+  // Construir mapa weekKey → número de días activos
+  const weekActiveCounts = new Map<string, number>()
+  for (const day of activeDays) {
+    const wk = calISOWeekKey(day)
+    weekActiveCounts.set(wk, (weekActiveCounts.get(wk) ?? 0) + 1)
+  }
+  const minWeekKey = fechaInicioMeta ? calISOWeekKey(fechaInicioMeta) : null
+
+  const now = new Date()
+  const todayY = now.getFullYear()
+  const todayM = now.getMonth()
+
+  // Rango: desde el mes del entrenamiento más antiguo hasta hoy
+  const oldest = entrenamientos.length ? entrenamientos[entrenamientos.length - 1].fecha : null
+  let startY = todayY, startM = todayM
+  if (oldest) {
+    const [oy, om] = oldest.split('-').map(Number)
+    startY = oy; startM = om - 1
+  }
+
+  const months: { year: number; month: number }[] = []
+  let y = startY, m = startM
+  while (y < todayY || (y === todayY && m <= todayM)) {
+    months.push({ year: y, month: m })
+    m++; if (m > 11) { m = 0; y++ }
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, padding: '20px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, width: '100%', maxWidth: 440, overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2e2e2e' }}>
+          <span style={{ ...BB, fontSize: '1.4rem', letterSpacing: 2, color: '#c8f135' }}>Actividad</span>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: '1px solid #2e2e2e', borderRadius: 6, color: '#666', fontSize: '1rem', padding: '4px 10px', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0'; e.currentTarget.style.borderColor = '#f0f0f0' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2e2e2e' }}
+          >✕</button>
+        </div>
+
+        {/* Months */}
+        <div style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 20px' }}>
+          {months.map(({ year, month }) => {
+            const cells = buildMonthCells(year, month)
+            // Agrupar celdas en filas de 7 (semanas)
+            const rows: (number | null)[][] = []
+            for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7))
+
+            return (
+              <div key={`${year}-${month}`}>
+                <div style={{ ...BB, fontSize: '2.2rem', color: '#f0f0f0', lineHeight: 1, marginBottom: 10 }}>
+                  {MESES[month]}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {rows.map((row, ri) => {
+                    // Determinar si esta semana cumple la meta
+                    const firstDay = row.find(d => d !== null)
+                    let weekMet = false
+                    if (firstDay != null) {
+                      const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(firstDay).padStart(2, '0')}`
+                      const wk = calISOWeekKey(iso)
+                      const count = weekActiveCounts.get(wk) ?? 0
+                      const afterMin = minWeekKey === null || wk >= minWeekKey
+                      weekMet = afterMin && count >= metaSemanal
+                    }
+                    return (
+                      <div key={ri} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr) 16px', gap: 4, alignItems: 'center' }}>
+                        {row.map((day, i) => {
+                          if (day === null) return <div key={i} />
+                          const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                          const active = activeDays.has(iso)
+                          return (
+                            <div key={i} style={{
+                              aspectRatio: '1',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              borderRadius: 8,
+                              background: active ? '#3B82F6' : '#141414',
+                              border: active ? 'none' : '1px solid #222',
+                              color: active ? '#fff' : '#333',
+                              fontSize: '0.8rem',
+                              fontFamily: 'var(--font-dm-sans), sans-serif',
+                              fontWeight: active ? 600 : 400,
+                            }}>
+                              {day}
+                            </div>
+                          )
+                        })}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: '#c8f135', fontWeight: 700 }}>
+                          {weekMet ? '✓' : ''}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

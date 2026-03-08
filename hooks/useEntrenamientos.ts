@@ -241,6 +241,7 @@ export function useEntrenamientos() {
     racha,
     sesionesEstaSemana,
     metaSemanal,
+    fechaInicioMeta,
     semanasAnio,
   }
 }
