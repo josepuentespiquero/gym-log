@@ -3,6 +3,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase, Entrenamiento } from '@/lib/supabase'
 
+export interface Nivel {
+  id: number
+  nombre_nivel: string
+  numero_rachas: number
+  icono: string
+}
+
 export interface NuevaSerie {
   fecha: string
   ejercicio: string
@@ -121,10 +128,11 @@ export function useEntrenamientos() {
   const [error, setError] = useState<string | null>(null)
   const [metaSemanal, setMetaSemanal] = useState(3)
   const [fechaInicioMeta, setFechaInicioMeta] = useState<string | null>(null)
+  const [niveles, setNiveles] = useState<Nivel[]>([])
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [{ data, error }, { data: estandar }] = await Promise.all([
+    const [{ data, error }, { data: estandar }, { data: nivelesData }] = await Promise.all([
       supabase
         .from('entrenamientos')
         .select('*')
@@ -134,6 +142,10 @@ export function useEntrenamientos() {
         .from('ejercicios_estandar')
         .select('nombre')
         .order('nombre', { ascending: true }),
+      supabase
+        .from('niveles')
+        .select('*')
+        .order('numero_rachas', { ascending: true }),
     ])
 
     if (error) {
@@ -142,6 +154,7 @@ export function useEntrenamientos() {
       setEntrenamientos(data ?? [])
     }
     setEjerciciosEstandar((estandar ?? []).map(e => e.nombre))
+    setNiveles((nivelesData ?? []) as Nivel[])
 
     // Fetch meta_semanal for the current user
     const { data: { user } } = await supabase.auth.getUser()
@@ -242,6 +255,7 @@ export function useEntrenamientos() {
     sesionesEstaSemana,
     metaSemanal,
     fechaInicioMeta,
+    niveles,
     semanasAnio,
   }
 }

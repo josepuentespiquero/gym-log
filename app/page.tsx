@@ -200,10 +200,39 @@ function SerieItem({ s, numSerie, onDelete }: { s: SeriePendiente; numSerie: num
   )
 }
 
+// ─── Nivel Icon ───────────────────────────────────────────────────────────────
+
+function NivelIcon({ racha, niveles }: { racha: number; niveles: import('@/hooks/useEntrenamientos').Nivel[] }) {
+  if (!niveles.length || racha === 0) return null
+
+  const sorted = [...niveles].sort((a, b) => a.numero_rachas - b.numero_rachas)
+  const currentLevel = [...sorted].reverse().find(n => n.numero_rachas <= racha)
+  if (!currentLevel) return null
+
+  const nextLevel = sorted.find(n => n.numero_rachas > racha)
+  const fillPct = nextLevel
+    ? Math.min((racha - currentLevel.numero_rachas) / (nextLevel.numero_rachas - currentLevel.numero_rachas) * 100, 100)
+    : 100
+
+  const iconUrl = `/martial-arts/${encodeURIComponent(currentLevel.icono)}`
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+        {/* Gris de fondo (icono completo desaturado) */}
+        <img src={iconUrl} alt={currentLevel.nombre_nivel} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'grayscale(1) brightness(0.4)', objectFit: 'contain' }} />
+        {/* Colores originales, relleno de abajo a arriba */}
+        <img src={iconUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', clipPath: `inset(${100 - fillPct}% 0 0 0)` }} />
+      </div>
+      <span style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: '0.95rem', color: '#aaa', lineHeight: 1.3 }}>{currentLevel.nombre_nivel}</span>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, semanasAnio, refetch } = useEntrenamientos()
+  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, niveles, semanasAnio, refetch } = useEntrenamientos()
   const router = useRouter()
 
   // Auth
@@ -497,35 +526,39 @@ export default function Home() {
           {/* RACHA */}
           <div style={{ flex: '1 1 0', minWidth: 0, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 16 }}>
             <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666', marginBottom: 10 }}>Racha</div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <div style={{ flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ ...BB, fontSize: '3rem', color: racha > 0 ? '#f0f0f0' : '#444', lineHeight: 1 }}>{racha}</span>
-                  <span style={{ color: '#666', fontSize: '0.7rem' }}>sem.</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Fila 1: número + cuadritos */}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <span style={{ ...BB, fontSize: '3rem', color: racha > 0 ? '#f0f0f0' : '#444', lineHeight: 1 }}>{racha}</span>
+                    <span style={{ color: '#666', fontSize: '0.7rem' }}>sem.</span>
+                  </div>
                 </div>
-                {racha === 0
-                  ? <div style={{ color: '#555', fontSize: '0.6rem', marginTop: 6, letterSpacing: '0.5px', lineHeight: 1.4 }}>Empieza<br />esta semana</div>
-                  : <div style={{ marginTop: 6 }}><span style={{ fontSize: '0.8rem' }}>🔥</span></div>
-                }
-              </div>
-              <div
-                style={{ flex: 1, cursor: 'pointer' }}
-                onClick={() => setShowCalendario(true)}
-                title="Ver actividad por días"
-              >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, alignContent: 'flex-start' }}>
-                  {semanasAnio.map((estado, i) => (
-                    <div key={i} style={{
-                      width: 8, height: 8, borderRadius: 2, flexShrink: 0,
-                      background:
-                        estado === 'achieved' ? '#3B82F6' :
-                        estado === 'partial'  ? '#1E3A5F' :
-                        estado === 'future'   ? '#222' :
-                        '#2e2e2e',
-                    }} />
-                  ))}
+                <div
+                  style={{ flex: 1, cursor: 'pointer' }}
+                  onClick={() => setShowCalendario(true)}
+                  title="Ver actividad por días"
+                >
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, alignContent: 'flex-start' }}>
+                    {semanasAnio.map((estado, i) => (
+                      <div key={i} style={{
+                        width: 8, height: 8, borderRadius: 2, flexShrink: 0,
+                        background:
+                          estado === 'achieved' ? '#3B82F6' :
+                          estado === 'partial'  ? '#1E3A5F' :
+                          estado === 'future'   ? '#222' :
+                          '#2e2e2e',
+                      }} />
+                    ))}
+                  </div>
                 </div>
               </div>
+              {/* Fila 2: icono + nombre nivel */}
+              {racha === 0
+                ? <div style={{ color: '#555', fontSize: '0.6rem', letterSpacing: '0.5px', lineHeight: 1.4 }}>Empieza<br />esta semana</div>
+                : <NivelIcon racha={racha} niveles={niveles} />
+              }
             </div>
           </div>
 
