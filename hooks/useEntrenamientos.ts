@@ -50,7 +50,7 @@ function buildWeekDates(entrenamientos: Entrenamiento[]): Map<string, Set<string
   return weekDates
 }
 
-function calcularRacha(entrenamientos: Entrenamiento[], metaSemanal: number): number {
+function calcularRacha(entrenamientos: Entrenamiento[], metaSemanal: number, fechaInicioMeta: string | null): number {
   if (!entrenamientos.length) return 0
   const now = new Date()
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -58,8 +58,11 @@ function calcularRacha(entrenamientos: Entrenamiento[], metaSemanal: number): nu
   const weekDates = buildWeekDates(entrenamientos)
   const currentCount = weekDates.get(currentWeek)?.size ?? 0
   let key = currentCount >= metaSemanal ? currentWeek : getPreviousWeekKey(currentWeek)
+  const minWeekKey = fechaInicioMeta ? getISOWeekKey(fechaInicioMeta) : null
   let racha = 0
-  while ((weekDates.get(key)?.size ?? 0) >= metaSemanal) {
+  while (true) {
+    if (minWeekKey && key < minWeekKey) break
+    if ((weekDates.get(key)?.size ?? 0) < metaSemanal) break
     racha++
     key = getPreviousWeekKey(key)
   }
@@ -77,12 +80,13 @@ function calcularSesionesEstaSemana(entrenamientos: Entrenamiento[]): number {
   return dates.size
 }
 
-function calcularSemanasAnio(entrenamientos: Entrenamiento[], metaSemanal: number): EstadoSemana[] {
+function calcularSemanasAnio(entrenamientos: Entrenamiento[], metaSemanal: number, fechaInicioMeta: string | null): EstadoSemana[] {
   const now = new Date()
   const year = now.getFullYear()
   const todayStr = `${year}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const currentWeek = getISOWeekKey(todayStr)
   const weekDates = buildWeekDates(entrenamientos)
+  const minWeekKey = fechaInicioMeta ? getISOWeekKey(fechaInicioMeta) : null
 
   // Determine total weeks in the year (52 or 53)
   const dec28 = new Date(year, 11, 28)
@@ -96,6 +100,8 @@ function calcularSemanasAnio(entrenamientos: Entrenamiento[], metaSemanal: numbe
     const weekKey = `${year}-${String(w).padStart(2, '0')}`
     if (weekKey > currentWeek) {
       result.push('future')
+    } else if (minWeekKey && weekKey < minWeekKey) {
+      result.push('empty')
     } else {
       const sessions = weekDates.get(weekKey)?.size ?? 0
       if (sessions >= metaSemanal) result.push('achieved')
@@ -114,6 +120,7 @@ export function useEntrenamientos() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [metaSemanal, setMetaSemanal] = useState(3)
+  const [fechaInicioMeta, setFechaInicioMeta] = useState<string | null>(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -141,10 +148,11 @@ export function useEntrenamientos() {
     if (user?.email) {
       const { data: userRow } = await supabase
         .from('usuarios')
-        .select('meta_semanal')
+        .select('meta_semanal, fecha_inicio_meta_semanal')
         .eq('email', user.email)
         .single()
       if (userRow?.meta_semanal) setMetaSemanal(userRow.meta_semanal)
+      setFechaInicioMeta(userRow?.fecha_inicio_meta_semanal ?? null)
     }
 
     setLoading(false)
@@ -216,9 +224,9 @@ export function useEntrenamientos() {
   )
 
   // ── Habit tracking ──────────────────────────────────────────────────────────
-  const racha = useMemo(() => calcularRacha(entrenamientos, metaSemanal), [entrenamientos, metaSemanal])
+  const racha = useMemo(() => calcularRacha(entrenamientos, metaSemanal, fechaInicioMeta), [entrenamientos, metaSemanal, fechaInicioMeta])
   const sesionesEstaSemana = useMemo(() => calcularSesionesEstaSemana(entrenamientos), [entrenamientos])
-  const semanasAnio = useMemo(() => calcularSemanasAnio(entrenamientos, metaSemanal), [entrenamientos, metaSemanal])
+  const semanasAnio = useMemo(() => calcularSemanasAnio(entrenamientos, metaSemanal, fechaInicioMeta), [entrenamientos, metaSemanal, fechaInicioMeta])
 
   return {
     entrenamientos,

@@ -224,7 +224,7 @@ export default function Home() {
 
   // Perfil
   const [showPerfil, setShowPerfil] = useState(false)
-  const [perfilForm, setPerfilForm] = useState({ meta_semanal: '3', fecha_nacimiento: '', peso: '' })
+  const [perfilForm, setPerfilForm] = useState({ fecha_nacimiento: '', peso: '' })
   const [cargandoPerfil, setCargandoPerfil] = useState(false)
   const [guardandoPerfil, setGuardandoPerfil] = useState(false)
   const [perfilFechaError, setPerfilFechaError] = useState('')
@@ -236,12 +236,11 @@ export default function Home() {
     if (user?.email) {
       const { data } = await supabase
         .from('usuarios')
-        .select('meta_semanal, fecha_nacimiento, peso')
+        .select('fecha_nacimiento, peso')
         .eq('email', user.email)
         .single()
       if (data) {
         setPerfilForm({
-          meta_semanal: String(data.meta_semanal ?? 3),
           fecha_nacimiento: isoToDisplayFull(data.fecha_nacimiento ?? ''),
           peso: data.peso != null ? String(data.peso) : '',
         })
@@ -261,7 +260,6 @@ export default function Home() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user?.email) {
       const { error } = await supabase.from('usuarios').update({
-        meta_semanal: Number(perfilForm.meta_semanal) || 0,
         fecha_nacimiento: isoFecha || null,
         peso: perfilForm.peso ? Number(perfilForm.peso) : null,
       }).eq('email', user.email)
@@ -275,6 +273,33 @@ export default function Home() {
     setGuardandoPerfil(false)
     setShowPerfil(false)
     showToast('Perfil guardado')
+  }
+
+  // Meta semanal
+  const [showEditMeta, setShowEditMeta] = useState(false)
+  const [editMetaVal, setEditMetaVal] = useState('3')
+  const [guardandoMeta, setGuardandoMeta] = useState(false)
+
+  async function guardarMetaSemanal() {
+    setGuardandoMeta(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.email) {
+      const hoy = new Date()
+      const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+      const { error } = await supabase.from('usuarios').update({
+        meta_semanal: Number(editMetaVal) || 3,
+        fecha_inicio_meta_semanal: hoyISO,
+      }).eq('email', user.email)
+      if (error) {
+        setGuardandoMeta(false)
+        showToast(`Error: ${error.message}`)
+        return
+      }
+      await refetch()
+    }
+    setGuardandoMeta(false)
+    setShowEditMeta(false)
+    showToast('Meta semanal actualizada')
   }
 
   // Form state — empty string on server to avoid timezone-based hydration mismatch
@@ -433,7 +458,7 @@ export default function Home() {
                 onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0'; e.currentTarget.style.borderColor = '#f0f0f0' }}
                 onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2e2e2e' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="8" r="4" />
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                 </svg>
@@ -446,7 +471,7 @@ export default function Home() {
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,241,53,0.2)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(200,241,53,0.1)' }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
                 </button>
@@ -481,24 +506,59 @@ export default function Home() {
                   : <div style={{ marginTop: 6 }}><span style={{ fontSize: '0.8rem' }}>🔥</span></div>
                 }
               </div>
-              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 2.5, alignContent: 'flex-start' }}>
-                {semanasAnio.map((estado, i) => (
-                  <div key={i} style={{
-                    width: 8, height: 8, borderRadius: 2, flexShrink: 0,
-                    background:
-                      estado === 'achieved' ? '#3B82F6' :
-                      estado === 'partial'  ? '#1E3A5F' :
-                      estado === 'future'   ? '#222' :
-                      '#2e2e2e',
-                  }} />
-                ))}
+              <div style={{ flex: 1, position: 'relative' }}
+                onMouseEnter={e => { const leg = e.currentTarget.querySelector('.grid-legend') as HTMLElement; if (leg) leg.style.opacity = '1' }}
+                onMouseLeave={e => { const leg = e.currentTarget.querySelector('.grid-legend') as HTMLElement; if (leg) leg.style.opacity = '0' }}
+              >
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, alignContent: 'flex-start' }}>
+                  {semanasAnio.map((estado, i) => (
+                    <div key={i} style={{
+                      width: 8, height: 8, borderRadius: 2, flexShrink: 0,
+                      background:
+                        estado === 'achieved' ? '#3B82F6' :
+                        estado === 'partial'  ? '#1E3A5F' :
+                        estado === 'future'   ? '#222' :
+                        '#2e2e2e',
+                    }} />
+                  ))}
+                </div>
+                <div className="grid-legend" style={{
+                  opacity: 0, transition: 'opacity 0.2s',
+                  position: 'absolute', bottom: 0, right: 0,
+                  background: '#111', border: '1px solid #2e2e2e', borderRadius: 6,
+                  padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4,
+                  pointerEvents: 'none',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: '#3B82F6', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.7rem', color: '#aaa', whiteSpace: 'nowrap' }}>Semana completada</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: '#1E3A5F', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.7rem', color: '#aaa', whiteSpace: 'nowrap' }}>Semana parcial</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* ESTA SEMANA */}
           <div style={{ flex: '1 1 0', minWidth: 0, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 16 }}>
-            <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Esta semana</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666' }}>Esta semana</div>
+              <button
+                onClick={() => { setEditMetaVal(String(metaSemanal)); setShowEditMeta(true) }}
+                title="Editar objetivo semanal"
+                style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 4, lineHeight: 0, transition: 'color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#555' }}
+              >
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
               <span style={{ ...BB, fontSize: '3rem', color: '#f0f0f0', lineHeight: 1 }}>{sesionesEstaSemana}</span>
               <span style={{ color: '#666', fontSize: '0.85rem' }}>/ {metaSemanal}</span>
@@ -662,8 +722,9 @@ export default function Home() {
         {/* SERIES list */}
         {buffer.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-            {buffer.map((s, i) => {
-              const prevSame = buffer.slice(0, i).filter(b => b.ejercicio === s.ejercicio).length
+            {[...buffer].reverse().map((s) => {
+              const origIndex = buffer.findIndex(b => b.localId === s.localId)
+              const prevSame = buffer.slice(0, origIndex).filter(b => b.ejercicio === s.ejercicio).length
               const numSerie = contarSeriesExistentes(s.ejercicio, fecha) + prevSame + 1
               return (
                 <SerieItem
@@ -740,6 +801,16 @@ export default function Home() {
           fechaError={perfilFechaError}
           onGuardar={guardarPerfil}
           onClose={() => setShowPerfil(false)}
+        />
+      )}
+
+      {showEditMeta && (
+        <EditMetaModal
+          valor={editMetaVal}
+          setValor={setEditMetaVal}
+          guardando={guardandoMeta}
+          onGuardar={guardarMetaSemanal}
+          onClose={() => setShowEditMeta(false)}
         />
       )}
     </div>
@@ -915,13 +986,75 @@ function HistorialModal({
   )
 }
 
+// ─── Edit Meta Modal ──────────────────────────────────────────────────────────
+
+function EditMetaModal({
+  valor, setValor, guardando, onGuardar, onClose,
+}: {
+  valor: string
+  setValor: (v: string) => void
+  guardando: boolean
+  onGuardar: () => void
+  onClose: () => void
+}) {
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, padding: '20px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, width: '100%', maxWidth: 440, overflow: 'hidden' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #2e2e2e' }}>
+          <span style={{ ...BB, fontSize: '1.4rem', letterSpacing: 2, color: '#c8f135' }}>Objetivo Semanal</span>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: '1px solid #2e2e2e', borderRadius: 6, color: '#666', fontSize: '1rem', padding: '4px 10px', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0'; e.currentTarget.style.borderColor = '#f0f0f0' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2e2e2e' }}
+          >✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Días por semana</div>
+            <input
+              type="number" min="1" max="7"
+              value={valor}
+              onChange={e => setValor(e.target.value)}
+              style={{ ...INPUT, fontSize: '1.4rem' }}
+              onFocus={focusAccent}
+              onBlur={blurAccent}
+            />
+          </div>
+
+          <div style={{ background: '#1a0a00', border: '1px solid #7a4a00', borderRadius: 8, padding: '12px 14px' }}>
+            <div style={{ color: '#f5a623', fontSize: '0.78rem', lineHeight: 1.5 }}>
+              ⚠ Al guardar, tus rachas serán calculadas a partir de hoy.
+            </div>
+          </div>
+
+          <button
+            onClick={onGuardar}
+            disabled={guardando}
+            style={{ background: '#c8f135', border: 'none', borderRadius: 10, color: '#0e0e0e', ...BB, fontSize: '1.2rem', letterSpacing: 3, padding: 14, cursor: 'pointer', opacity: guardando ? 0.6 : 1, transition: 'opacity 0.2s' }}
+          >
+            {guardando ? 'GUARDANDO...' : 'GUARDAR'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Perfil Modal ─────────────────────────────────────────────────────────────
 
 function PerfilModal({
   form, setForm, cargando, guardando, fechaError, onGuardar, onClose,
 }: {
-  form: { meta_semanal: string; fecha_nacimiento: string; peso: string }
-  setForm: (v: { meta_semanal: string; fecha_nacimiento: string; peso: string }) => void
+  form: { fecha_nacimiento: string; peso: string }
+  setForm: (v: { fecha_nacimiento: string; peso: string }) => void
   cargando: boolean
   guardando: boolean
   fechaError: string
@@ -952,19 +1085,6 @@ function PerfilModal({
             <div style={{ color: '#666', textAlign: 'center', padding: '32px 0', fontSize: '0.9rem' }}>Cargando...</div>
           ) : (
             <>
-              {/* Objetivo semanal */}
-              <div>
-                <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Objetivo semanal (días)</div>
-                <input
-                  type="number" min="1" max="7"
-                  value={form.meta_semanal}
-                  onChange={e => setForm({ ...form, meta_semanal: e.target.value })}
-                  style={{ ...INPUT, fontSize: '1.4rem' }}
-                  onFocus={focusAccent}
-                  onBlur={blurAccent}
-                />
-              </div>
-
               {/* Fecha de nacimiento */}
               <div>
                 <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Fecha de nacimiento</div>
