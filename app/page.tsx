@@ -175,7 +175,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
   )
 }
 
-function SerieItem({ s, numSerie, onDelete }: { s: SeriePendiente; numSerie: number; onDelete: () => void }) {
+function SerieItem({ s, numSerie, onDelete, showCamposExtra = true }: { s: SeriePendiente; numSerie: number; onDelete: () => void; showCamposExtra?: boolean }) {
   const [hov, setHov] = useState(false)
   return (
     <div style={{ background: '#0e0e0e', border: '1px solid #2e2e2e', borderRadius: 8, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, animation: 'slideIn 0.2s ease' }}>
@@ -185,7 +185,7 @@ function SerieItem({ s, numSerie, onDelete }: { s: SeriePendiente; numSerie: num
           {s.ejercicio}
         </div>
         <div style={{ color: '#f0f0f0', fontSize: '1.25rem', fontWeight: 500 }}>
-          {s.repeticiones} reps{s.peso != null ? ` · ${s.peso} kg` : ''} · Fallo: {s.fallo}{s.fallo === 'N' ? ` · RIR: ${s.reserva}` : ''}
+          {s.repeticiones} reps{s.peso != null ? ` · ${s.peso} kg` : ''}{showCamposExtra ? ` · Fallo: ${s.fallo}${s.fallo === 'N' ? ` · RIR: ${s.reserva}` : ''}` : ''}
         </div>
       </div>
       <button
@@ -758,6 +758,7 @@ export default function Home() {
                   s={s}
                   numSerie={numSerie}
                   onDelete={() => setBuffer(prev => prev.filter(b => b.localId !== s.localId))}
+                  showCamposExtra={serieCamposExtra}
                 />
               )
             })}
@@ -809,6 +810,7 @@ export default function Home() {
           setMode={setModalMode}
           busqueda={busqueda}
           setBusqueda={setBusqueda}
+          showCamposExtra={serieCamposExtra}
           onBorrar={async (id) => {
             const { error } = await borrarEntrenamiento(id)
             if (error) showToast('Error al borrar')
@@ -914,7 +916,7 @@ function RecordDelBtn({ onClick }: { onClick: () => void }) {
 
 function HistorialModal({
   porFecha, registros, mode, setMode,
-  busqueda, setBusqueda, onBorrar, onClose,
+  busqueda, setBusqueda, onBorrar, onClose, showCamposExtra,
 }: {
   porFecha: { fecha: string; ejercicios: string[] }[]
   registros: Entrenamiento[]
@@ -924,6 +926,7 @@ function HistorialModal({
   setBusqueda: (v: string) => void
   onBorrar: (id: string) => void
   onClose: () => void
+  showCamposExtra: boolean
 }) {
 
   return (
@@ -1001,8 +1004,8 @@ function HistorialModal({
                           <span style={{ ...BB, fontSize: '1.5rem', color: '#c8f135', fontWeight: 'normal', letterSpacing: 1 }}> {dias}</span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.9rem', color: '#666', marginTop: 4 }}>
-                        {isoToDisplay(e.fecha)} · {e.peso != null ? `${e.peso}kg` : 'sin peso'} · {e.repeticiones} reps · Fallo: {e.fallo} · RIR: {e.reserva ?? 0}
+                      <div style={{ fontSize: '1.2rem', color: '#666', marginTop: 4 }}>
+                        {isoToDisplay(e.fecha)} · {e.peso != null ? `${e.peso}kg` : 'sin peso'} · {e.repeticiones} reps{showCamposExtra ? ` · Fallo: ${e.fallo} · RIR: ${e.reserva ?? 0}` : ''}
                       </div>
                     </div>
                     <RecordDelBtn onClick={() => onBorrar(e.id)} />
