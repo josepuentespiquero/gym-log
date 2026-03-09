@@ -232,7 +232,7 @@ function NivelIcon({ racha, niveles }: { racha: number; niveles: import('@/hooks
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, niveles, semanasAnio, refetch } = useEntrenamientos()
+  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, serieCamposExtra, niveles, semanasAnio, refetch } = useEntrenamientos()
   const router = useRouter()
 
   // Auth
@@ -253,7 +253,7 @@ export default function Home() {
 
   // Perfil
   const [showPerfil, setShowPerfil] = useState(false)
-  const [perfilForm, setPerfilForm] = useState({ fecha_nacimiento: '', peso: '' })
+  const [perfilForm, setPerfilForm] = useState({ fecha_nacimiento: '', peso: '', serie_campos_extra: false })
   const [cargandoPerfil, setCargandoPerfil] = useState(false)
   const [guardandoPerfil, setGuardandoPerfil] = useState(false)
   const [perfilFechaError, setPerfilFechaError] = useState('')
@@ -265,13 +265,14 @@ export default function Home() {
     if (user?.email) {
       const { data } = await supabase
         .from('usuarios')
-        .select('fecha_nacimiento, peso')
+        .select('fecha_nacimiento, peso, serie_campos_extra')
         .eq('email', user.email)
         .single()
       if (data) {
         setPerfilForm({
           fecha_nacimiento: isoToDisplayFull(data.fecha_nacimiento ?? ''),
           peso: data.peso != null ? String(data.peso) : '',
+          serie_campos_extra: data.serie_campos_extra ?? false,
         })
       }
     }
@@ -291,6 +292,7 @@ export default function Home() {
       const { error } = await supabase.from('usuarios').update({
         fecha_nacimiento: isoFecha || null,
         peso: perfilForm.peso ? Number(perfilForm.peso) : null,
+        serie_campos_extra: perfilForm.serie_campos_extra,
       }).eq('email', user.email)
       if (error) {
         setGuardandoPerfil(false)
@@ -412,8 +414,8 @@ export default function Home() {
       ejercicio: ejercicioActual,
       peso: peso !== '' ? parseFloat(peso) : null,
       repeticiones: reps,
-      fallo,
-      reserva: fallo === 'N' && reserva !== '' ? parseInt(reserva) : 0,
+      fallo: serieCamposExtra ? fallo : 'N',
+      reserva: serieCamposExtra ? (fallo === 'N' && reserva !== '' ? parseInt(reserva) : 0) : 0,
     }])
     setRepeticiones('')
     setFallo('N')
@@ -698,31 +700,35 @@ export default function Home() {
         </Field>
 
         {/* FALLO MUSCULAR */}
-        <Field label="Fallo muscular">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <ToggleSwitch checked={fallo === 'S'} onChange={v => setFallo(v ? 'S' : 'N')} />
-            <span style={{ fontSize: '0.95rem', color: fallo === 'S' ? '#c8f135' : '#666', fontWeight: fallo === 'S' ? 500 : 400, transition: 'color 0.2s' }}>
-              {fallo === 'S' ? 'Sí — fallo muscular' : 'No'}
-            </span>
-          </div>
-        </Field>
+        {serieCamposExtra && (
+          <Field label="Fallo muscular">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <ToggleSwitch checked={fallo === 'S'} onChange={v => setFallo(v ? 'S' : 'N')} />
+              <span style={{ fontSize: '0.95rem', color: fallo === 'S' ? '#c8f135' : '#666', fontWeight: fallo === 'S' ? 500 : 400, transition: 'color 0.2s' }}>
+                {fallo === 'S' ? 'Sí — fallo muscular' : 'No'}
+              </span>
+            </div>
+          </Field>
+        )}
 
         {/* RESERVA (RIR) — dimmed when fallo=S */}
-        <Field label="Reserva (RIR)">
-          <div style={{ opacity: fallo === 'S' ? 0.3 : 1, pointerEvents: fallo === 'S' ? 'none' : 'auto', transition: 'opacity 0.3s' }}>
-            <input
-              type="number"
-              value={reserva}
-              onChange={e => setReserva(e.target.value)}
-              placeholder="0"
-              min="0"
-              max="10"
-              style={INPUT}
-              onFocus={focusAccent}
-              onBlur={blurAccent}
-            />
-          </div>
-        </Field>
+        {serieCamposExtra && (
+          <Field label="Reserva (RIR)">
+            <div style={{ opacity: fallo === 'S' ? 0.3 : 1, pointerEvents: fallo === 'S' ? 'none' : 'auto', transition: 'opacity 0.3s' }}>
+              <input
+                type="number"
+                value={reserva}
+                onChange={e => setReserva(e.target.value)}
+                placeholder="0"
+                min="0"
+                max="10"
+                style={INPUT}
+                onFocus={focusAccent}
+                onBlur={blurAccent}
+              />
+            </div>
+          </Field>
+        )}
 
         <hr style={{ border: 'none', borderTop: '1px solid #2e2e2e', margin: '24px 0' }} />
 
@@ -1215,8 +1221,8 @@ function CalendarioModal({ entrenamientos, metaSemanal, fechaInicioMeta, onClose
 function PerfilModal({
   form, setForm, cargando, guardando, fechaError, onGuardar, onClose,
 }: {
-  form: { fecha_nacimiento: string; peso: string }
-  setForm: (v: { fecha_nacimiento: string; peso: string }) => void
+  form: { fecha_nacimiento: string; peso: string; serie_campos_extra: boolean }
+  setForm: (v: { fecha_nacimiento: string; peso: string; serie_campos_extra: boolean }) => void
   cargando: boolean
   guardando: boolean
   fechaError: string
@@ -1282,6 +1288,17 @@ function PerfilModal({
                   onFocus={focusAccent}
                   onBlur={blurAccent}
                 />
+              </div>
+
+              {/* Fallo muscular y RIR */}
+              <div>
+                <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Grabar fallo muscular y RIR</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <ToggleSwitch checked={form.serie_campos_extra} onChange={v => setForm({ ...form, serie_campos_extra: v })} />
+                  <span style={{ fontSize: '0.95rem', color: form.serie_campos_extra ? '#c8f135' : '#666', transition: 'color 0.2s' }}>
+                    {form.serie_campos_extra ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
               </div>
 
               {/* Guardar */}

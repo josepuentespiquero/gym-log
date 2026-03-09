@@ -128,6 +128,7 @@ export function useEntrenamientos() {
   const [error, setError] = useState<string | null>(null)
   const [metaSemanal, setMetaSemanal] = useState(3)
   const [fechaInicioMeta, setFechaInicioMeta] = useState<string | null>(null)
+  const [serieCamposExtra, setSerieCamposExtra] = useState(false)
   const [niveles, setNiveles] = useState<Nivel[]>([])
 
   const fetchAll = useCallback(async () => {
@@ -161,11 +162,12 @@ export function useEntrenamientos() {
     if (user?.email) {
       const { data: userRow } = await supabase
         .from('usuarios')
-        .select('meta_semanal, fecha_inicio_meta_semanal')
+        .select('meta_semanal, fecha_inicio_meta_semanal, serie_campos_extra')
         .eq('email', user.email)
         .single()
       if (userRow?.meta_semanal) setMetaSemanal(userRow.meta_semanal)
       setFechaInicioMeta(userRow?.fecha_inicio_meta_semanal ?? null)
+      setSerieCamposExtra(userRow?.serie_campos_extra ?? false)
     }
 
     setLoading(false)
@@ -255,6 +257,7 @@ export function useEntrenamientos() {
     sesionesEstaSemana,
     metaSemanal,
     fechaInicioMeta,
+    serieCamposExtra,
     niveles,
     semanasAnio,
   }
