@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const confirmUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm?token_hash=${data.properties.hashed_token}&type=signup`
 
     const { error: emailError } = await resend.emails.send({
-      from: 'gymlog@contact.sialguien.com',
+      from: process.env.RESEND_FROM_EMAIL!,
       to: email,
       subject: 'Confirma tu cuenta — Gym Log',
       html: `
