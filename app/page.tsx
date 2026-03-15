@@ -525,6 +525,40 @@ export default function Home() {
       {!loading && (
         <div style={{ width: '100%', maxWidth: 440, marginBottom: 16, display: 'flex', gap: 10 }}>
 
+          {/* ESTA SEMANA */}
+          <div style={{ flex: '1 1 0', minWidth: 0, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666' }}>Esta semana</div>
+              <button
+                onClick={() => { setEditMetaVal(String(metaSemanal)); setShowEditMeta(true) }}
+                title="Editar objetivo semanal"
+                style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 4, lineHeight: 0, transition: 'color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#555' }}
+              >
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
+              <span style={{ ...BB, fontSize: '3rem', color: sesionesEstaSemana >= metaSemanal ? '#3B82F6' : '#f0f0f0', lineHeight: 1 }}>{sesionesEstaSemana}</span>
+              <span style={{ color: '#666', fontSize: '0.85rem' }}>/ {metaSemanal}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
+              {Array.from({ length: metaSemanal }).map((_, i) => (
+                <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < sesionesEstaSemana ? '#c8f135' : '#2e2e2e', flexShrink: 0 }} />
+              ))}
+            </div>
+            <div style={{ background: '#2e2e2e', borderRadius: 4, height: 4, overflow: 'hidden' }}>
+              <div style={{ background: '#c8f135', height: '100%', width: `${Math.min((sesionesEstaSemana / metaSemanal) * 100, 100)}%`, borderRadius: 4 }} />
+            </div>
+            {sesionesEstaSemana >= metaSemanal && (
+              <div style={{ color: '#c8f135', fontSize: '0.7rem', marginTop: 6, letterSpacing: '0.5px' }}>Meta cumplida ✓</div>
+            )}
+          </div>
+
           {/* RACHA */}
           <div style={{ flex: '1 1 0', minWidth: 0, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 16 }}>
             <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666', marginBottom: 10 }}>Racha</div>
@@ -562,40 +596,6 @@ export default function Home() {
                 : <NivelIcon racha={racha} niveles={niveles} />
               }
             </div>
-          </div>
-
-          {/* ESTA SEMANA */}
-          <div style={{ flex: '1 1 0', minWidth: 0, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, padding: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={{ fontSize: '0.6rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#666' }}>Esta semana</div>
-              <button
-                onClick={() => { setEditMetaVal(String(metaSemanal)); setShowEditMeta(true) }}
-                title="Editar objetivo semanal"
-                style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 4, lineHeight: 0, transition: 'color 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#f0f0f0' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#555' }}
-              >
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              </button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
-              <span style={{ ...BB, fontSize: '3rem', color: sesionesEstaSemana >= metaSemanal ? '#3B82F6' : '#f0f0f0', lineHeight: 1 }}>{sesionesEstaSemana}</span>
-              <span style={{ color: '#666', fontSize: '0.85rem' }}>/ {metaSemanal}</span>
-            </div>
-            <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
-              {Array.from({ length: metaSemanal }).map((_, i) => (
-                <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < sesionesEstaSemana ? '#c8f135' : '#2e2e2e', flexShrink: 0 }} />
-              ))}
-            </div>
-            <div style={{ background: '#2e2e2e', borderRadius: 4, height: 4, overflow: 'hidden' }}>
-              <div style={{ background: '#c8f135', height: '100%', width: `${Math.min((sesionesEstaSemana / metaSemanal) * 100, 100)}%`, borderRadius: 4 }} />
-            </div>
-            {sesionesEstaSemana >= metaSemanal && (
-              <div style={{ color: '#c8f135', fontSize: '0.7rem', marginTop: 6, letterSpacing: '0.5px' }}>Meta cumplida ✓</div>
-            )}
           </div>
 
         </div>
