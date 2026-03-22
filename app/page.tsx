@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useEntrenamientos } from '@/hooks/useEntrenamientos'
-import { supabase, Entrenamiento } from '@/lib/supabase'
+import { supabase, Entrenamiento, Ejercicio } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -71,7 +71,8 @@ function diasDesde(iso: string): string {
 
 interface SeriePendiente {
   localId: string
-  ejercicio: string
+  id_ejer: number
+  descripcion: string
   peso: number | null
   repeticiones: number
   fallo: 'S' | 'N'
@@ -182,7 +183,7 @@ function SerieItem({ s, numSerie, onDelete, showCamposExtra = true }: { s: Serie
       <span style={{ ...BB, fontSize: '1.5rem', color: '#c8f135', minWidth: 36 }}>S{numSerie}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '1rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#f0f0f0', marginBottom: 4, fontWeight: 500 }}>
-          {s.ejercicio}
+          {s.descripcion}
         </div>
         <div style={{ color: '#f0f0f0', fontSize: '1.25rem', fontWeight: 500 }}>
           {s.repeticiones} reps{s.peso != null ? ` · ${s.peso} kg` : ''}{showCamposExtra ? ` · Fallo: ${s.fallo}${s.fallo === 'N' ? ` · RIR: ${s.reserva}` : ''}` : ''}
@@ -232,18 +233,16 @@ function NivelIcon({ racha, niveles }: { racha: number; niveles: import('@/hooks
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { entrenamientos, ejerciciosEstandar, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, serieCamposExtra, niveles, semanasAnio, refetch } = useEntrenamientos()
+  const { entrenamientos, ejercicios, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, serieCamposExtra, niveles, semanasAnio, refetch, idUser } = useEntrenamientos()
   const router = useRouter()
 
   // Auth
   const [isAdmin, setIsAdmin] = useState(false)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase.from('usuarios').select('rol').eq('email', user.email).single()
-        .then(({ data }) => { if (data?.rol === 'admin') setIsAdmin(true) })
-    })
-  }, [])
+    if (!idUser) return
+    supabase.from('usuarios').select('rol').eq('id_user', idUser).single()
+      .then(({ data }) => { if (data?.rol === 'admin') setIsAdmin(true) })
+  }, [idUser])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -261,12 +260,11 @@ export default function Home() {
   async function abrirPerfil() {
     setShowPerfil(true)
     setCargandoPerfil(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user?.email) {
+    if (idUser) {
       const { data } = await supabase
         .from('usuarios')
         .select('fecha_nacimiento, peso, serie_campos_extra')
-        .eq('email', user.email)
+        .eq('id_user', idUser)
         .single()
       if (data) {
         setPerfilForm({
@@ -287,13 +285,12 @@ export default function Home() {
     }
     setPerfilFechaError('')
     setGuardandoPerfil(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user?.email) {
+    if (idUser) {
       const { error } = await supabase.from('usuarios').update({
         fecha_nacimiento: isoFecha || null,
         peso: perfilForm.peso ? Number(perfilForm.peso) : null,
         serie_campos_extra: perfilForm.serie_campos_extra,
-      }).eq('email', user.email)
+      }).eq('id_user', idUser)
       if (error) {
         setGuardandoPerfil(false)
         showToast(`Error: ${error.message}`)
@@ -314,14 +311,13 @@ export default function Home() {
 
   async function guardarMetaSemanal() {
     setGuardandoMeta(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user?.email) {
+    if (idUser) {
       const hoy = new Date()
       const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
       const { error } = await supabase.from('usuarios').update({
         meta_semanal: Number(editMetaVal) || 3,
         fecha_inicio_meta_semanal: hoyISO,
-      }).eq('email', user.email)
+      }).eq('id_user', idUser)
       if (error) {
         setGuardandoMeta(false)
         showToast(`Error: ${error.message}`)
@@ -337,20 +333,30 @@ export default function Home() {
   // Form state — empty string on server to avoid timezone-based hydration mismatch
   const [fecha, setFecha] = useState('')
   useEffect(() => { setFecha(fechaHoy()) }, [])
-  const [ejercicioSelect, setEjercicioSelect] = useState('')
+  const [ejercicioSelectId, setEjercicioSelectId] = useState('')
   const [esCustom, setEsCustom] = useState(false)
   const [mostrarEstandares, setMostrarEstandares] = useState(false)
 
-  const ejerciciosDisponibles = useMemo(() => {
-    const propios = [...new Set(entrenamientos.map(e => e.ejercicio))].sort((a, b) => a.localeCompare(b, 'es'))
-    if (!mostrarEstandares) return propios
-    return [...new Set([...propios, ...ejerciciosEstandar])].sort((a, b) => a.localeCompare(b, 'es'))
-  }, [entrenamientos, ejerciciosEstandar, mostrarEstandares])
+  const ejerciciosDisponibles = useMemo((): Ejercicio[] => {
+    const idsPropios = new Set(entrenamientos.map(e => e.id_ejer))
+    const filtered = ejercicios.filter(e =>
+      mostrarEstandares ? (idsPropios.has(e.id_ejer) || e.estandar) : idsPropios.has(e.id_ejer)
+    )
+    // Deduplicar por id_ejer: preferir fila per-usuario sobre la global del catálogo
+    const byId = new Map<number, Ejercicio>()
+    for (const e of filtered) {
+      if (!byId.has(e.id_ejer) || e.id_user != null) byId.set(e.id_ejer, e)
+    }
+    return [...byId.values()].sort((a, b) => a.descripcion.localeCompare(b.descripcion))
+  }, [entrenamientos, ejercicios, mostrarEstandares])
 
   // Sync selected exercise when list changes
   useEffect(() => {
-    if (ejerciciosDisponibles.length > 0 && !esCustom && !ejerciciosDisponibles.includes(ejercicioSelect)) {
-      setEjercicioSelect(ejerciciosDisponibles[0])
+    if (ejerciciosDisponibles.length > 0 && !esCustom) {
+      const currentId = parseInt(ejercicioSelectId)
+      if (!ejerciciosDisponibles.find(e => e.id_ejer === currentId)) {
+        setEjercicioSelectId(String(ejerciciosDisponibles[0].id_ejer))
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ejerciciosDisponibles])
@@ -371,12 +377,12 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const ejercicioActual = esCustom ? ejercicioCustom.trim() : ejercicioSelect
+  const id_ejerActual: number | null = esCustom ? null : (parseInt(ejercicioSelectId) || null)
 
   const ultimaSesion = useMemo(
-    () => (ejercicioActual ? getUltimaSesion(ejercicioActual) : []),
+    () => (id_ejerActual ? getUltimaSesion(id_ejerActual) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ejercicioActual, entrenamientos]
+    [id_ejerActual, entrenamientos]
   )
   const serie1 = ultimaSesion.find(s => s.serie === 1) ?? ultimaSesion[0] ?? null
 
@@ -386,9 +392,9 @@ export default function Home() {
       setEjercicioCustom('')
     } else {
       setEsCustom(false)
-      setEjercicioSelect(val)
-      // Auto-fill from last session
-      const last = getUltimaSesion(val)
+      setEjercicioSelectId(val)
+      const id = parseInt(val)
+      const last = getUltimaSesion(id)
       const s1 = last.find(s => s.serie === 1) ?? last[0]
       if (s1) {
         setPeso(s1.peso != null ? String(s1.peso) : '')
@@ -405,13 +411,34 @@ export default function Home() {
     toastTimer.current = setTimeout(() => setToast(null), 2200)
   }
 
-  function añadirSerie() {
+  async function añadirSerie() {
     const reps = parseInt(repeticiones)
     if (!reps || reps < 1) { showToast('Introduce las repeticiones'); return }
-    if (!ejercicioActual) { showToast('Selecciona un ejercicio'); return }
+
+    let id_ejer: number
+    let descripcion: string
+
+    if (esCustom) {
+      const nombre = ejercicioCustom.trim()
+      if (!nombre) { showToast('Introduce el nombre del ejercicio'); return }
+      const { data: ejData, error } = await supabase
+        .from('ejercicios_usuario')
+        .upsert({ descripcion: nombre, id_user: idUser }, { onConflict: 'descripcion,id_user' })
+        .select('id_ejer, descripcion')
+        .single()
+      if (error || !ejData) { showToast('Error al crear ejercicio'); return }
+      id_ejer = ejData.id_ejer
+      descripcion = ejData.descripcion
+    } else {
+      if (!id_ejerActual) { showToast('Selecciona un ejercicio'); return }
+      id_ejer = id_ejerActual
+      descripcion = ejercicios.find(e => e.id_ejer === id_ejer)?.descripcion ?? ''
+    }
+
     setBuffer(prev => [...prev, {
       localId: crypto.randomUUID(),
-      ejercicio: ejercicioActual,
+      id_ejer,
+      descripcion,
       peso: peso !== '' ? parseFloat(peso) : null,
       repeticiones: reps,
       fallo: serieCamposExtra ? fallo : 'N',
@@ -425,15 +452,16 @@ export default function Home() {
   async function guardarTodo() {
     if (!buffer.length) { showToast('Añade al menos una serie'); return }
     setGuardando(true)
-    const porEjercicio: Record<string, SeriePendiente[]> = {}
+    const porEjercicio: Record<number, SeriePendiente[]> = {}
     for (const s of buffer) {
-      if (!porEjercicio[s.ejercicio]) porEjercicio[s.ejercicio] = []
-      porEjercicio[s.ejercicio].push(s)
+      if (!porEjercicio[s.id_ejer]) porEjercicio[s.id_ejer] = []
+      porEjercicio[s.id_ejer].push(s)
     }
-    const series = Object.entries(porEjercicio).flatMap(([ej, items]) => {
-      const existentes = contarSeriesExistentes(ej, fecha)
+    const series = Object.entries(porEjercicio).flatMap(([idStr, items]) => {
+      const id_ejer = parseInt(idStr)
+      const existentes = contarSeriesExistentes(id_ejer, fecha)
       return items.map((s, i) => ({
-        fecha, ejercicio: ej, peso: s.peso,
+        fecha, id_ejer, peso: s.peso,
         serie: existentes + i + 1,
         repeticiones: s.repeticiones, fallo: s.fallo,
         reserva: s.fallo === 'N' ? s.reserva : 0,
@@ -449,28 +477,30 @@ export default function Home() {
     const g: Record<string, Set<string>> = {}
     for (const e of entrenamientos) {
       if (!g[e.fecha]) g[e.fecha] = new Set()
-      g[e.fecha].add(e.ejercicio)
+      const desc = ejercicios.find(ej => ej.id_ejer === e.id_ejer)?.descripcion ?? String(e.id_ejer)
+      g[e.fecha].add(desc)
     }
     return Object.entries(g)
       .map(([f, ejs]) => ({ fecha: f, ejercicios: [...ejs].sort() }))
       .sort((a, b) => b.fecha.localeCompare(a.fecha))
-  }, [entrenamientos])
+  }, [entrenamientos, ejercicios])
 
   const entrenamientosFiltrados = useMemo(() => {
+    const getDesc = (id: number) => ejercicios.find(e => e.id_ejer === id)?.descripcion ?? ''
     const all = [...entrenamientos].sort((a, b) =>
       b.fecha.localeCompare(a.fecha) ||
-      a.ejercicio.localeCompare(b.ejercicio, 'es') ||
+      getDesc(a.id_ejer).localeCompare(getDesc(b.id_ejer), 'es') ||
       a.serie - b.serie
     )
     if (!busqueda) return all
     const q = busqueda.toLowerCase()
     return all.filter(e =>
-      e.ejercicio.toLowerCase().includes(q) ||
+      getDesc(e.id_ejer).toLowerCase().includes(q) ||
       e.fecha.includes(q) ||
       isoToDisplay(e.fecha).includes(q) ||
       isoToDisplayFull(e.fecha).includes(q)
     )
-  }, [entrenamientos, busqueda])
+  }, [entrenamientos, ejercicios, busqueda])
 
   const totalReg = entrenamientos.length + buffer.length
   const lastDate = entrenamientos[0]?.fecha ?? null
@@ -625,7 +655,7 @@ export default function Home() {
           </div>
           <div style={{ position: 'relative' }}>
             <select
-              value={esCustom ? '__otro__' : ejercicioSelect}
+              value={esCustom ? '__otro__' : ejercicioSelectId}
               onChange={e => handleEjercicioChange(e.target.value)}
               style={INPUT}
               onFocus={focusAccent}
@@ -633,7 +663,7 @@ export default function Home() {
             >
               {ejerciciosDisponibles.length === 0
                 ? <option value="" disabled>Sin ejercicios — activa &quot;Mostrar estándares&quot;</option>
-                : ejerciciosDisponibles.map(ej => <option key={ej} value={ej}>{ej}</option>)
+                : ejerciciosDisponibles.map(ej => <option key={ej.id_ejer} value={String(ej.id_ejer)}>{ej.descripcion}</option>)
               }
               <option value="__otro__">+ Nuevo ejercicio...</option>
             </select>
@@ -750,8 +780,8 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
             {[...buffer].reverse().map((s) => {
               const origIndex = buffer.findIndex(b => b.localId === s.localId)
-              const prevSame = buffer.slice(0, origIndex).filter(b => b.ejercicio === s.ejercicio).length
-              const numSerie = contarSeriesExistentes(s.ejercicio, fecha) + prevSame + 1
+              const prevSame = buffer.slice(0, origIndex).filter(b => b.id_ejer === s.id_ejer).length
+              const numSerie = contarSeriesExistentes(s.id_ejer, fecha) + prevSame + 1
               return (
                 <SerieItem
                   key={s.localId}
@@ -811,6 +841,7 @@ export default function Home() {
           busqueda={busqueda}
           setBusqueda={setBusqueda}
           showCamposExtra={serieCamposExtra}
+          ejercicios={ejercicios}
           onBorrar={async (id) => {
             const { error } = await borrarEntrenamiento(id)
             if (error) showToast('Error al borrar')
@@ -916,7 +947,7 @@ function RecordDelBtn({ onClick }: { onClick: () => void }) {
 
 function HistorialModal({
   porFecha, registros, mode, setMode,
-  busqueda, setBusqueda, onBorrar, onClose, showCamposExtra,
+  busqueda, setBusqueda, onBorrar, onClose, showCamposExtra, ejercicios,
 }: {
   porFecha: { fecha: string; ejercicios: string[] }[]
   registros: Entrenamiento[]
@@ -927,6 +958,7 @@ function HistorialModal({
   onBorrar: (id: string) => void
   onClose: () => void
   showCamposExtra: boolean
+  ejercicios: Ejercicio[]
 }) {
 
   return (
@@ -999,7 +1031,7 @@ function HistorialModal({
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '1.2rem', color: '#f0f0f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
-                        {e.ejercicio}
+                        {ejercicios.find(ej => ej.id_ejer === e.id_ejer)?.descripcion ?? ''}
                         {!esHoy && (
                           <span style={{ ...BB, fontSize: '1.5rem', color: '#c8f135', fontWeight: 'normal', letterSpacing: 1 }}> {dias}</span>
                         )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { supabase, Entrenamiento } from '@/lib/supabase'
+import { supabase, Entrenamiento, Ejercicio } from '@/lib/supabase'
 
 export interface Nivel {
   id: number
@@ -12,7 +12,7 @@ export interface Nivel {
 
 export interface NuevaSerie {
   fecha: string
-  ejercicio: string
+  id_ejer: number
   peso: number | null
   serie: number
   repeticiones: number
@@ -123,26 +123,49 @@ function calcularSemanasAnio(entrenamientos: Entrenamiento[], metaSemanal: numbe
 
 export function useEntrenamientos() {
   const [entrenamientos, setEntrenamientos] = useState<Entrenamiento[]>([])
-  const [ejerciciosEstandar, setEjerciciosEstandar] = useState<string[]>([])
+  const [ejercicios, setEjercicios] = useState<Ejercicio[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [metaSemanal, setMetaSemanal] = useState(3)
   const [fechaInicioMeta, setFechaInicioMeta] = useState<string | null>(null)
   const [serieCamposExtra, setSerieCamposExtra] = useState(false)
   const [niveles, setNiveles] = useState<Nivel[]>([])
+  const [idUser, setIdUser] = useState<number | null>(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [{ data, error }, { data: estandar }, { data: nivelesData }] = await Promise.all([
+
+    // 1. Obtener id_user del usuario activo antes de queries de datos
+    const { data: { user } } = await supabase.auth.getUser()
+    let currentIdUser: number | null = null
+    if (user?.email) {
+      const { data: userRow } = await supabase
+        .from('usuarios')
+        .select('id_user, meta_semanal, fecha_inicio_meta_semanal, serie_campos_extra')
+        .eq('email', user.email)
+        .single()
+      if (userRow?.id_user) {
+        currentIdUser = userRow.id_user
+        setIdUser(userRow.id_user)
+      }
+      if (userRow?.meta_semanal) setMetaSemanal(userRow.meta_semanal)
+      setFechaInicioMeta(userRow?.fecha_inicio_meta_semanal ?? null)
+      setSerieCamposExtra(userRow?.serie_campos_extra ?? false)
+    }
+
+    // 2. Fetch entrenamientos filtrado explícitamente por id_user
+    const [{ data, error }, { data: ejerciciosData }, { data: nivelesData }] = await Promise.all([
       supabase
         .from('entrenamientos')
         .select('*')
+        .eq('id_user', currentIdUser ?? 0)
         .order('fecha', { ascending: false })
         .order('created_at', { ascending: true }),
       supabase
-        .from('ejercicios_estandar')
-        .select('nombre')
-        .order('nombre', { ascending: true }),
+        .from('ejercicios_usuario')
+        .select('id_ejer, id_user, descripcion, estandar, proponer')
+        .or(`id_user.is.null,id_user.eq.${currentIdUser}`)
+        .order('descripcion', { ascending: true }),
       supabase
         .from('niveles')
         .select('*')
@@ -154,21 +177,8 @@ export function useEntrenamientos() {
     } else {
       setEntrenamientos(data ?? [])
     }
-    setEjerciciosEstandar((estandar ?? []).map(e => e.nombre))
+    setEjercicios((ejerciciosData ?? []) as Ejercicio[])
     setNiveles((nivelesData ?? []) as Nivel[])
-
-    // Fetch meta_semanal for the current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user?.email) {
-      const { data: userRow } = await supabase
-        .from('usuarios')
-        .select('meta_semanal, fecha_inicio_meta_semanal, serie_campos_extra')
-        .eq('email', user.email)
-        .single()
-      if (userRow?.meta_semanal) setMetaSemanal(userRow.meta_semanal)
-      setFechaInicioMeta(userRow?.fecha_inicio_meta_semanal ?? null)
-      setSerieCamposExtra(userRow?.serie_campos_extra ?? false)
-    }
 
     setLoading(false)
   }, [])
@@ -178,11 +188,9 @@ export function useEntrenamientos() {
   }, [fetchAll])
 
   const guardarSeries = useCallback(async (series: NuevaSerie[]) => {
-    // Obtener el email del usuario autenticado
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user?.email) return { error: 'No autenticado' }
+    if (!idUser) return { error: 'No autenticado' }
 
-    const seriesConUsuario = series.map(s => ({ ...s, usuario: user.email! }))
+    const seriesConUsuario = series.map(s => ({ ...s, id_user: idUser }))
 
     const { error } = await supabase
       .from('entrenamientos')
@@ -190,17 +198,18 @@ export function useEntrenamientos() {
 
     if (error) return { error: error.message }
 
-    // Re-fetch para sincronizar (RLS filtra automáticamente por usuario)
+    // Re-fetch para sincronizar, filtrado explícitamente por id_user
     const { data: fresh, error: fetchError } = await supabase
       .from('entrenamientos')
       .select('*')
+      .eq('id_user', idUser)
       .order('fecha', { ascending: false })
       .order('created_at', { ascending: true })
 
     if (!fetchError && fresh) setEntrenamientos(fresh)
 
     return { error: null }
-  }, [])
+  }, [idUser])
 
   const borrarEntrenamiento = useCallback(async (id: string) => {
     const { error } = await supabase
@@ -216,8 +225,8 @@ export function useEntrenamientos() {
 
   // Devuelve las series de la sesión más reciente para un ejercicio dado
   const getUltimaSesion = useCallback(
-    (ejercicio: string): Entrenamiento[] => {
-      const sesiones = entrenamientos.filter(e => e.ejercicio === ejercicio)
+    (id_ejer: number): Entrenamiento[] => {
+      const sesiones = entrenamientos.filter(e => e.id_ejer === id_ejer)
       if (!sesiones.length) return []
 
       const ultimaFecha = sesiones.reduce(
@@ -231,10 +240,10 @@ export function useEntrenamientos() {
     [entrenamientos]
   )
 
-  // Cuenta cuántas series ya existen para ejercicio+fecha en Supabase
+  // Cuenta cuántas series ya existen para id_ejer+fecha en Supabase
   const contarSeriesExistentes = useCallback(
-    (ejercicio: string, fecha: string): number =>
-      entrenamientos.filter(e => e.ejercicio === ejercicio && e.fecha === fecha).length,
+    (id_ejer: number, fecha: string): number =>
+      entrenamientos.filter(e => e.id_ejer === id_ejer && e.fecha === fecha).length,
     [entrenamientos]
   )
 
@@ -245,7 +254,7 @@ export function useEntrenamientos() {
 
   return {
     entrenamientos,
-    ejerciciosEstandar,
+    ejercicios,
     loading,
     error,
     guardarSeries,
@@ -260,5 +269,6 @@ export function useEntrenamientos() {
     serieCamposExtra,
     niveles,
     semanasAnio,
+    idUser,
   }
 }

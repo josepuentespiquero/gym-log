@@ -44,15 +44,15 @@ export async function GET() {
     { count: newThisWeek },
   ] = await Promise.all([
     supabaseAdmin.from('usuarios').select('email, created_at').order('created_at', { ascending: false }),
-    supabaseAdmin.from('entrenamientos').select('usuario, created_at'),
+    supabaseAdmin.from('entrenamientos').select('id_user, created_at'),
     supabaseAdmin.from('usuarios').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
   ])
 
-  // Group by usuario, find most recent activity per user
-  const lastByUser = new Map<string, string>()
+  // Group by id_user, find most recent activity per user
+  const lastByUser = new Map<number, string>()
   for (const e of lastActivities ?? []) {
-    const prev = lastByUser.get(e.usuario)
-    if (!prev || e.created_at > prev) lastByUser.set(e.usuario, e.created_at)
+    const prev = lastByUser.get(e.id_user)
+    if (!prev || e.created_at > prev) lastByUser.set(e.id_user, e.created_at)
   }
 
   // Count users active in the last 7 days

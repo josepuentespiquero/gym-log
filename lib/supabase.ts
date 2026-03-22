@@ -6,15 +6,23 @@ export const supabase = createBrowserClient(
   { auth: { flowType: 'implicit' } }
 )
 
+export interface Ejercicio {
+  id_ejer: number
+  id_user?: number | null
+  descripcion: string
+  estandar: boolean
+  proponer: boolean
+}
+
 export interface Entrenamiento {
   id: string
   fecha: string      // YYYY-MM-DD
-  ejercicio: string
+  id_ejer: number
   peso: number | null
   serie: number
   repeticiones: number
   fallo: 'S' | 'N'
   reserva: number | null
-  usuario: string
+  id_user: number
   created_at: string
 }
