@@ -340,7 +340,7 @@ export default function Home() {
   const ejerciciosDisponibles = useMemo((): Ejercicio[] => {
     const idsPropios = new Set(entrenamientos.map(e => e.id_ejer))
     const filtered = ejercicios.filter(e =>
-      mostrarEstandares ? (idsPropios.has(e.id_ejer) || e.estandar) : idsPropios.has(e.id_ejer)
+      mostrarEstandares ? (idsPropios.has(e.id_ejer) || e.id_user == null) : idsPropios.has(e.id_ejer)
     )
     // Deduplicar por id_ejer: preferir fila per-usuario sobre la global del catálogo
     const byId = new Map<number, Ejercicio>()

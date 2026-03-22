@@ -163,7 +163,7 @@ export function useEntrenamientos() {
         .order('created_at', { ascending: true }),
       supabase
         .from('ejercicios_usuario')
-        .select('id_ejer, id_user, descripcion, estandar, proponer')
+        .select('id_ejer, id_user, descripcion, proponer')
         .or(`id_user.is.null,id_user.eq.${currentIdUser}`)
         .order('descripcion', { ascending: true }),
       supabase

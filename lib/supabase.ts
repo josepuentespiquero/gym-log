@@ -10,7 +10,6 @@ export interface Ejercicio {
   id_ejer: number
   id_user?: number | null
   descripcion: string
-  estandar: boolean
   proponer: boolean
 }
 
