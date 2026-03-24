@@ -208,6 +208,13 @@ export function useEntrenamientos() {
 
     if (!fetchError && fresh) setEntrenamientos(fresh)
 
+    const { data: ejFresh } = await supabase
+      .from('ejercicios_usuario')
+      .select('id_ejer, id_user, descripcion, proponer')
+      .or(`id_user.is.null,id_user.eq.${idUser}`)
+      .order('descripcion', { ascending: true })
+    if (ejFresh) setEjercicios(ejFresh as Ejercicio[])
+
     return { error: null }
   }, [idUser])
 

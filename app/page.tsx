@@ -421,14 +421,25 @@ export default function Home() {
     if (esCustom) {
       const nombre = ejercicioCustom.trim()
       if (!nombre) { showToast('Introduce el nombre del ejercicio'); return }
-      const { data: ejData, error } = await supabase
+      const { data: existing } = await supabase
         .from('ejercicios_usuario')
-        .upsert({ descripcion: nombre, id_user: idUser }, { onConflict: 'descripcion,id_user' })
         .select('id_ejer, descripcion')
-        .single()
-      if (error || !ejData) { showToast('Error al crear ejercicio'); return }
-      id_ejer = ejData.id_ejer
-      descripcion = ejData.descripcion
+        .eq('descripcion', nombre)
+        .eq('id_user', idUser)
+        .maybeSingle()
+      if (existing) {
+        id_ejer = existing.id_ejer
+        descripcion = existing.descripcion
+      } else {
+        const { data: ejData, error } = await supabase
+          .from('ejercicios_usuario')
+          .insert({ descripcion: nombre, id_user: idUser, proponer: false })
+          .select('id_ejer, descripcion')
+          .single()
+        if (error || !ejData) { showToast('Error al crear ejercicio'); return }
+        id_ejer = ejData.id_ejer
+        descripcion = ejData.descripcion
+      }
     } else {
       if (!id_ejerActual) { showToast('Selecciona un ejercicio'); return }
       id_ejer = id_ejerActual
