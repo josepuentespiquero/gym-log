@@ -129,6 +129,7 @@ export function useEntrenamientos() {
   const [metaSemanal, setMetaSemanal] = useState(3)
   const [fechaInicioMeta, setFechaInicioMeta] = useState<string | null>(null)
   const [serieCamposExtra, setSerieCamposExtra] = useState(false)
+  const [sugerirEjercicio, setSugerirEjercicio] = useState(false)
   const [niveles, setNiveles] = useState<Nivel[]>([])
   const [idUser, setIdUser] = useState<number | null>(null)
 
@@ -141,7 +142,7 @@ export function useEntrenamientos() {
     if (user?.email) {
       const { data: userRow } = await supabase
         .from('usuarios')
-        .select('id_user, meta_semanal, fecha_inicio_meta_semanal, serie_campos_extra')
+        .select('id_user, meta_semanal, fecha_inicio_meta_semanal, serie_campos_extra, sugerir_ejercicio')
         .eq('email', user.email)
         .single()
       if (userRow?.id_user) {
@@ -151,6 +152,7 @@ export function useEntrenamientos() {
       if (userRow?.meta_semanal) setMetaSemanal(userRow.meta_semanal)
       setFechaInicioMeta(userRow?.fecha_inicio_meta_semanal ?? null)
       setSerieCamposExtra(userRow?.serie_campos_extra ?? false)
+      setSugerirEjercicio(userRow?.sugerir_ejercicio ?? false)
     }
 
     // 2. Fetch entrenamientos filtrado explícitamente por id_user
@@ -254,6 +256,16 @@ export function useEntrenamientos() {
     [entrenamientos]
   )
 
+  const toggleProponer = useCallback(async (id_ejer: number, proponer: boolean) => {
+    if (!idUser) return
+    await supabase
+      .from('ejercicios_usuario')
+      .update({ proponer })
+      .eq('id_ejer', id_ejer)
+      .eq('id_user', idUser)
+    setEjercicios(prev => prev.map(e => e.id_ejer === id_ejer && e.id_user === idUser ? { ...e, proponer } : e))
+  }, [idUser])
+
   // ── Habit tracking ──────────────────────────────────────────────────────────
   const racha = useMemo(() => calcularRacha(entrenamientos, metaSemanal, fechaInicioMeta), [entrenamientos, metaSemanal, fechaInicioMeta])
   const sesionesEstaSemana = useMemo(() => calcularSesionesEstaSemana(entrenamientos), [entrenamientos])
@@ -274,6 +286,8 @@ export function useEntrenamientos() {
     metaSemanal,
     fechaInicioMeta,
     serieCamposExtra,
+    sugerirEjercicio,
+    toggleProponer,
     niveles,
     semanasAnio,
     idUser,

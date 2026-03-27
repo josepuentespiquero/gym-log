@@ -67,6 +67,15 @@ function diasDesde(iso: string): string {
   return diff === 1 ? 'Hace 1 día' : `Hace ${diff} días`
 }
 
+function diasDesdeNumerico(iso: string): number {
+  const [fy, fm, fd] = iso.split('-').map(Number)
+  const now = new Date()
+  return Math.round(
+    (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() -
+     new Date(fy, fm - 1, fd).getTime()) / 86400000
+  )
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SeriePendiente {
@@ -233,7 +242,7 @@ function NivelIcon({ racha, niveles }: { racha: number; niveles: import('@/hooks
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { entrenamientos, ejercicios, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, serieCamposExtra, niveles, semanasAnio, refetch, idUser } = useEntrenamientos()
+  const { entrenamientos, ejercicios, loading, guardarSeries, borrarEntrenamiento, getUltimaSesion, contarSeriesExistentes, racha, sesionesEstaSemana, metaSemanal, fechaInicioMeta, serieCamposExtra, sugerirEjercicio: sugerirEjercicioHook, toggleProponer, niveles, semanasAnio, refetch, idUser } = useEntrenamientos()
   const router = useRouter()
 
   // Auth
@@ -252,7 +261,7 @@ export default function Home() {
 
   // Perfil
   const [showPerfil, setShowPerfil] = useState(false)
-  const [perfilForm, setPerfilForm] = useState({ fecha_nacimiento: '', peso: '', serie_campos_extra: false })
+  const [perfilForm, setPerfilForm] = useState({ fecha_nacimiento: '', peso: '', serie_campos_extra: false, sugerir_ejercicio: false })
   const [cargandoPerfil, setCargandoPerfil] = useState(false)
   const [guardandoPerfil, setGuardandoPerfil] = useState(false)
   const [perfilFechaError, setPerfilFechaError] = useState('')
@@ -263,7 +272,7 @@ export default function Home() {
     if (idUser) {
       const { data } = await supabase
         .from('usuarios')
-        .select('fecha_nacimiento, peso, serie_campos_extra')
+        .select('fecha_nacimiento, peso, serie_campos_extra, sugerir_ejercicio')
         .eq('id_user', idUser)
         .single()
       if (data) {
@@ -271,6 +280,7 @@ export default function Home() {
           fecha_nacimiento: isoToDisplayFull(data.fecha_nacimiento ?? ''),
           peso: data.peso != null ? String(data.peso) : '',
           serie_campos_extra: data.serie_campos_extra ?? false,
+          sugerir_ejercicio: data.sugerir_ejercicio ?? false,
         })
       }
     }
@@ -290,6 +300,7 @@ export default function Home() {
         fecha_nacimiento: isoFecha || null,
         peso: perfilForm.peso ? Number(perfilForm.peso) : null,
         serie_campos_extra: perfilForm.serie_campos_extra,
+        sugerir_ejercicio: perfilForm.sugerir_ejercicio,
       }).eq('id_user', idUser)
       if (error) {
         setGuardandoPerfil(false)
@@ -336,6 +347,7 @@ export default function Home() {
   const [ejercicioSelectId, setEjercicioSelectId] = useState('')
   const [esCustom, setEsCustom] = useState(false)
   const [mostrarEstandares, setMostrarEstandares] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const ejerciciosDisponibles = useMemo((): Ejercicio[] => {
     const idsPropios = new Set(entrenamientos.map(e => e.id_ejer))
@@ -347,8 +359,35 @@ export default function Home() {
     for (const e of filtered) {
       if (!byId.has(e.id_ejer) || e.id_user != null) byId.set(e.id_ejer, e)
     }
-    return [...byId.values()].sort((a, b) => a.descripcion.localeCompare(b.descripcion))
-  }, [entrenamientos, ejercicios, mostrarEstandares])
+    const lista = [...byId.values()]
+    if (sugerirEjercicioHook) {
+      return lista.sort((a, b) => {
+        const da = getUltimaSesion(a.id_ejer)[0]?.fecha
+        const db = getUltimaSesion(b.id_ejer)[0]?.fecha
+        const diasA = da ? diasDesdeNumerico(da) : Infinity
+        const diasB = db ? diasDesdeNumerico(db) : Infinity
+        return diasB - diasA
+      })
+    }
+    return lista.sort((a, b) => a.descripcion.localeCompare(b.descripcion))
+  }, [entrenamientos, ejercicios, mostrarEstandares, sugerirEjercicioHook, getUltimaSesion])
+
+  const diasPorEjercicio = useMemo((): Map<number, number> => {
+    const map = new Map<number, number>()
+    for (const ej of ejerciciosDisponibles) {
+      const ultima = getUltimaSesion(ej.id_ejer)
+      if (ultima.length) map.set(ej.id_ejer, diasDesdeNumerico(ultima[0].fecha))
+    }
+    return map
+  }, [ejerciciosDisponibles, getUltimaSesion])
+
+  // Cerrar dropdown custom al hacer click fuera
+  useEffect(() => {
+    if (!dropdownOpen) return
+    const handler = () => setDropdownOpen(false)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [dropdownOpen])
 
   // Sync selected exercise when list changes
   useEffect(() => {
@@ -664,22 +703,64 @@ export default function Home() {
               <span style={{ fontSize: '0.75rem', letterSpacing: '1px', color: mostrarEstandares ? '#c8f135' : '#555', transition: 'color 0.15s' }}>Mostrar estándares</span>
             </label>
           </div>
-          <div style={{ position: 'relative' }}>
-            <select
-              value={esCustom ? '__otro__' : ejercicioSelectId}
-              onChange={e => handleEjercicioChange(e.target.value)}
-              style={INPUT}
-              onFocus={focusAccent}
-              onBlur={blurAccent}
-            >
-              {ejerciciosDisponibles.length === 0
-                ? <option value="" disabled>Sin ejercicios — activa &quot;Mostrar estándares&quot;</option>
-                : ejerciciosDisponibles.map(ej => <option key={ej.id_ejer} value={String(ej.id_ejer)}>{ej.descripcion}</option>)
-              }
-              <option value="__otro__">+ Nuevo ejercicio...</option>
-            </select>
-            <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#c8f135', pointerEvents: 'none', fontSize: '1.1rem' }}>▾</span>
-          </div>
+          {sugerirEjercicioHook ? (
+            <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+              <div
+                onClick={() => setDropdownOpen(o => !o)}
+                style={{ ...INPUT, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span style={{ color: '#f0f0f0', textTransform: 'uppercase' }}>
+                  {esCustom ? '+ Nuevo ejercicio...' : (ejercicios.find(e => String(e.id_ejer) === ejercicioSelectId)?.descripcion ?? '')}
+                </span>
+                <span style={{ color: '#c8f135', flexShrink: 0 }}>▾</span>
+              </div>
+              {dropdownOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 8, marginTop: 4, maxHeight: 280, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+                  {ejerciciosDisponibles.map(ej => {
+                    const dias = diasPorEjercicio.get(ej.id_ejer)
+                    const activo = !esCustom && String(ej.id_ejer) === ejercicioSelectId
+                    return (
+                      <div
+                        key={ej.id_ejer}
+                        onClick={() => { handleEjercicioChange(String(ej.id_ejer)); setDropdownOpen(false) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid #2e2e2e', cursor: 'pointer', background: activo ? '#242424' : 'transparent' }}
+                      >
+                        <span style={{ ...BB, fontSize: '1.1rem', color: ej.proponer ? '#c8f135' : '#555', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>
+                          {dias != null ? dias : '—'}
+                        </span>
+                        <span style={{ color: ej.proponer ? '#f0f0f0' : '#555', textTransform: 'uppercase', fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+                          {ej.descripcion}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  <div
+                    onClick={() => { handleEjercicioChange('__otro__'); setDropdownOpen(false) }}
+                    style={{ padding: '10px 14px', color: '#c8f135', cursor: 'pointer', fontSize: '0.9rem' }}
+                  >
+                    + Nuevo ejercicio...
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ position: 'relative' }}>
+              <select
+                value={esCustom ? '__otro__' : ejercicioSelectId}
+                onChange={e => handleEjercicioChange(e.target.value)}
+                style={INPUT}
+                onFocus={focusAccent}
+                onBlur={blurAccent}
+              >
+                {ejerciciosDisponibles.length === 0
+                  ? <option value="" disabled>Sin ejercicios — activa &quot;Mostrar estándares&quot;</option>
+                  : ejerciciosDisponibles.map(ej => <option key={ej.id_ejer} value={String(ej.id_ejer)}>{ej.descripcion}</option>)
+                }
+                <option value="__otro__">+ Nuevo ejercicio...</option>
+              </select>
+              <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#c8f135', pointerEvents: 'none', fontSize: '1.1rem' }}>▾</span>
+            </div>
+          )}
           {esCustom && (
             <input
               type="text"
@@ -871,6 +952,8 @@ export default function Home() {
           fechaError={perfilFechaError}
           onGuardar={guardarPerfil}
           onClose={() => setShowPerfil(false)}
+          ejerciciosUsuario={ejercicios.filter(e => e.id_user != null)}
+          onToggleProponer={toggleProponer}
         />
       )}
 
@@ -1265,19 +1348,21 @@ function CalendarioModal({ entrenamientos, metaSemanal, fechaInicioMeta, onClose
 // ─── Perfil Modal ─────────────────────────────────────────────────────────────
 
 function PerfilModal({
-  form, setForm, cargando, guardando, fechaError, onGuardar, onClose,
+  form, setForm, cargando, guardando, fechaError, onGuardar, onClose, ejerciciosUsuario, onToggleProponer,
 }: {
-  form: { fecha_nacimiento: string; peso: string; serie_campos_extra: boolean }
-  setForm: (v: { fecha_nacimiento: string; peso: string; serie_campos_extra: boolean }) => void
+  form: { fecha_nacimiento: string; peso: string; serie_campos_extra: boolean; sugerir_ejercicio: boolean }
+  setForm: (v: { fecha_nacimiento: string; peso: string; serie_campos_extra: boolean; sugerir_ejercicio: boolean }) => void
   cargando: boolean
   guardando: boolean
   fechaError: string
   onGuardar: () => void
   onClose: () => void
+  ejerciciosUsuario: Ejercicio[]
+  onToggleProponer: (id_ejer: number, proponer: boolean) => void
 }) {
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, padding: '20px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, padding: '20px 16px', overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: 10, width: '100%', maxWidth: 440, overflow: 'hidden' }}>
@@ -1345,6 +1430,36 @@ function PerfilModal({
                     {form.serie_campos_extra ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
+              </div>
+
+              {/* Sugerir ejercicio */}
+              <div>
+                <div style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', marginBottom: 8 }}>Sugerir ejercicio</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <ToggleSwitch checked={form.sugerir_ejercicio} onChange={v => setForm({ ...form, sugerir_ejercicio: v })} />
+                  <span style={{ fontSize: '0.95rem', color: form.sugerir_ejercicio ? '#c8f135' : '#666', transition: 'color 0.2s' }}>
+                    {form.sugerir_ejercicio ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+                {form.sugerir_ejercicio && (
+                  <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 280, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+                    {ejerciciosUsuario.length === 0 ? (
+                      <div style={{ color: '#666', fontSize: '0.85rem' }}>No tienes ejercicios registrados.</div>
+                    ) : (
+                      ejerciciosUsuario.map(ej => (
+                        <div key={ej.id_ejer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#0e0e0e', borderRadius: 8, border: '1px solid #2e2e2e' }}>
+                          <span style={{ fontSize: '0.95rem', color: '#f0f0f0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{ej.descripcion}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: '0.8rem', color: ej.proponer ? '#c8f135' : '#666', transition: 'color 0.2s' }}>
+                              {ej.proponer ? 'Sí' : 'No'}
+                            </span>
+                            <ToggleSwitch checked={ej.proponer} onChange={v => onToggleProponer(ej.id_ejer, v)} />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Guardar */}
